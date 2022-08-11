@@ -12,7 +12,7 @@ import logging
 import re
 
 from ..text import bracket_level
-
+from ..text import HYPHENS
 
 log = logging.getLogger(__name__)
 
@@ -282,3 +282,136 @@ class ChemAbbreviationDetector(AbbreviationDetector):
         ('triethylamine', 'NEt3'),
         ('triethylamine', 'Et3N'),
     ]
+
+
+def balanced_brackets(myStr):
+    stack = []
+    open_list = ["[", "{", "("]
+    close_list = ["]", "}", ")"]
+    for i in myStr:
+        if i in open_list:
+            stack.append(i)
+        elif i in close_list:
+            pos = close_list.index(i)
+            if ((len(stack) > 0) and
+                (open_list[pos] == stack[len(stack)-1])):
+                stack.pop()
+            else:
+                return False
+    if len(stack) == 0:
+        return True
+    else:
+        return False
+
+
+class TADFAbbreviationDetector(object):
+    """Detect abbreviation definitions in a list of tokens.
+    """
+
+    # TODO: Extend to Greek characters (custom method instead of .isalnum())
+
+    #: Minimum abbreviation length
+    abbr_min = 3
+    #: Maximum abbreviation length
+    abbr_max = 15
+    #: String equivalents to use when detecting abbreviations.
+    abbr_equivs = []
+    #: Minimum long name length
+    min_long_length = 20
+
+    def __init__(self, abbr_min=None, abbr_max=None, abbr_equivs=None, min_long_length=None):
+        self.abbr_min = abbr_min if abbr_min is not None else self.abbr_min
+        self.abbr_max = abbr_max if abbr_max is not None else self.abbr_max
+        self.abbr_equivs = abbr_equivs if abbr_equivs is not None else self.abbr_equivs
+        self.min_long_length = min_long_length if min_long_length is not None else self.min_long_length
+
+    def _is_allowed_abbr(self, tokens):
+        """Return True if text is an allowed abbreviation."""
+
+        def count_hyphens(tks):
+            count_hyph = 0
+            for hyph in HYPHENS:
+                count_hyph += tks.count(hyph)
+            return count_hyph
+
+        num_hyph = count_hyphens(tokens)
+        if len(tokens) - (2 * num_hyph) <= 2:  # Abbreviations should contain at most 2 tokens.
+            abbr_text = ''.join(tokens)
+            if self.abbr_min <= len(abbr_text) - num_hyph <= self.abbr_max and balanced_brackets(abbr_text):
+                # Check the number of characters in abbrev_text and if it contains balanced brackets or no brackets
+                if abbr_text[0].isalnum() and any(c.isalpha() for c in abbr_text):
+                    # Disallow property values
+                    if re.match('^\d+(\.\d+)?(g|m[lL]|cm)$', abbr_text):
+                        # int or float followed by "q" or "ml" or "cm"
+                        return False
+                    return True
+        return False
+
+    def _get_candidates(self, sent):
+        """
+        :param sent: A CDE Sentence object
+        :return: span of abbreviation
+        """
+        candidate_pairs = []
+        for long_name in self._get_long_names(sent):
+            tokens = sent.tokens
+            # TODO: Dirty steps because the preceding and following tokens might not be 1 space away.
+            pre_token = [(i, t) for i, t in enumerate(tokens) if t.end == long_name.start - 1]
+            post_token = [(i, t) for i, t in enumerate(tokens) if t.start == long_name.end + 1]
+
+            # first check is there a () immediately following.
+            if len(post_token) != 0:
+                post_index = post_token[0][0]
+                post_token = post_token[0][1].text
+                if post_token == "(":
+                    for j, t2 in enumerate(tokens[post_index+1:]):
+                        if t2.text in {")", ",", ";"}:
+                            abbrev_tokens = sent.raw_tokens[post_index+1:post_index+j+1]
+                            if self._is_allowed_abbr(abbrev_tokens):
+                                candidate_pairs.append(("".join(abbrev_tokens), long_name.text))
+                                break
+            # second check is there a = behind.
+                elif post_token == "=":
+                    for cem in sent.cems:
+                        if cem.start - 2 == long_name.end + 1 and self._is_allowed_abbr([cem.text]):
+                            candidate_pairs.append((cem.text, long_name.text))
+                    pass
+            elif len(pre_token) != 0:
+                pre_index = pre_token[0][0]
+                pre_token = pre_token[0][1].text
+                # finally check is there a = ahead.
+                if pre_token == "=":
+                    for cem in sent.cems:
+                        if cem.end + 1 == long_name.start - 2 and self._is_allowed_abbr([cem.text]):
+                            candidate_pairs.append((cem.text, long_name.text))
+                    pass
+        return candidate_pairs
+
+    def _get_long_names(self, sent):
+        """
+        Invoke the cems attribute of a Sentence object and select long CEMs for it.
+        :param sent: a Sentence Object
+        :return: A list of potential long names
+        """
+        long_list = []
+        long_names = sent.cems
+        for long_name in long_names:
+            if long_name.length > self.min_long_length:
+                long_list.append(long_name)
+        return long_list
+
+    def _filter_candidates(self, candidates):
+        """
+        :param candidates: initial found pairs of long and short names
+        :return: filtered pairs where long name must be longer than short name and short name is not a substring of long name
+        """
+        results = []
+        for short, long in candidates:
+            if (short not in long) and len(long) > len(short):
+                results.append((short, long))
+        return results
+
+    def detect(self, sent):
+        candidates = self._get_candidates(sent)
+        results = self._filter_candidates(candidates)
+        return results

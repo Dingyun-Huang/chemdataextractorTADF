@@ -22,7 +22,7 @@ from ..model.base import ModelList, sort_merge_candidates
 from ..nlp.lexicon import ChemLexicon, Lexicon
 from ..nlp.cem import IGNORE_PREFIX, IGNORE_SUFFIX, SPECIALS, SPLITS, CiDictCemTagger, CsDictCemTagger, CrfCemTagger
 from ..nlp.new_cem import CemTagger
-from ..nlp.abbrev import ChemAbbreviationDetector
+from ..nlp.abbrev import ChemAbbreviationDetector, TADFAbbreviationDetector
 from ..nlp.tag import NoneTagger, POS_TAG_TYPE, NER_TAG_TYPE
 from ..nlp.pos import ChemCrfPosTagger, CrfPosTagger, ApPosTagger, ChemApPosTagger
 # from ..nlp.tokenize import ChemSentenceTokenizer, ChemWordTokenizer, regex_span_tokenize, SentenceTokenizer, WordTokenizer, FineWordTokenizer, ChemTokWordTokenizer, SpacyTokenizer
@@ -624,15 +624,20 @@ class Sentence(BaseText):
         abbreviations = []
         if self.abbreviation_detector:
             # log.debug('Detecting abbreviations')
-            ners = self.unprocessed_ner_tags
-            for abbr_span, long_span in self.abbreviation_detector.detect_spans(self.raw_tokens):
-                abbr = self.raw_tokens[abbr_span[0]:abbr_span[1]]
-                long = self.raw_tokens[long_span[0]:long_span[1]]
-                # Check if long is entirely tagged as one named entity type
-                long_tags = ners[long_span[0]:long_span[1]]
-                unique_tags = set([tag[2:] for tag in long_tags if tag is not None])
-                tag = long_tags[0][2:] if None not in long_tags and len(unique_tags) == 1 else None
-                abbreviations.append((abbr, long, tag))
+            if isinstance(self.abbreviation_detector, TADFAbbreviationDetector):
+                for short_name, long_name in self.abbreviation_detector.detect(self):
+                    abbreviations.append(([short_name], [long_name], 'CM'))
+                return abbreviations
+            else:
+                ners = self.unprocessed_ner_tags
+                for abbr_span, long_span in self.abbreviation_detector.detect_spans(self.raw_tokens):
+                    abbr = self.raw_tokens[abbr_span[0]:abbr_span[1]]
+                    long = self.raw_tokens[long_span[0]:long_span[1]]
+                    # Check if long is entirely tagged as one named entity type
+                    long_tags = ners[long_span[0]:long_span[1]]
+                    unique_tags = set([tag[2:] for tag in long_tags if tag is not None])
+                    tag = long_tags[0][2:] if None not in long_tags and len(unique_tags) == 1 else None
+                    abbreviations.append((abbr, long, tag))
         return abbreviations
 
     @memoized_property
