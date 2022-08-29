@@ -458,3 +458,103 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
         combined_entities = create_entities_list(entities)
         root_phrase = OneOrMore(combined_entities + Optional(SkipTo(combined_entities)))('root_phrase')
         return root_phrase
+
+
+class AutoTableParserFactorisedPower(AutoTableParser):
+    """ Additions for automated parsing of tables"""
+
+    @property
+    def root(self):
+        # is always found, our models currently rely on the compound
+        chem_name = self.chem_name
+        try:
+            compound_model = self.model.compound.model_class
+            labels = compound_model.labels.parse_expression('labels')
+        except AttributeError:
+            labels = NoMatch()
+        entities = [labels]
+        no_value_element = W('NoValue')('raw_value')
+
+        if hasattr(self.model, 'dimensions') and not self.model.dimensions:
+            # the mandatory elements of Dimensionless model are grouped into a entities list
+            specifier = self.model.specifier.parse_expression('specifier')
+            value_phrase = value_element() | no_value_element
+            entities.append(specifier)
+            entities.append(value_phrase)
+
+        elif hasattr(self.model, 'dimensions') and self.model.dimensions:
+            # the mandatory elements of Quantity model are grouped into a entities list
+            # print(self.model, self.model.dimensions)
+            unit_element = Group(Optional(R("^10[2-9]$")('factorised_power')) +
+                construct_unit_element(self.model.dimensions).with_condition(match_dimensions_of(self.model))('raw_units'))
+            specifier = self.model.specifier.parse_expression('specifier') + Optional(W('/')) + Optional(W('(') | W('[')).hide() + Optional(
+                unit_element)
+            value_phrase = ((value_element() | no_value_element) + Optional(unit_element))
+            entities.append(specifier)
+            entities.append(value_phrase)
+
+        elif hasattr(self.model, 'specifier') and self.model.specifier:
+            # now we are parsing an element that has no value but some custom string
+            # therefore, there will be no matching interpret function, all entities are custom except for the specifier
+            specifier = self.model.specifier.parse_expression('specifier')
+            entities.append(specifier)
+
+        # the optional, user-defined, entities of the model are added, they are tagged with the name of the field
+        for field in self.model.fields:
+            if field not in ['raw_value', 'raw_units', 'value', 'units', 'error', 'specifier']:
+                if self.model.__getattribute__(self.model, field).parse_expression is not None:
+                    entities.append(self.model.__getattribute__(self.model, field).parse_expression(field))
+
+        # the chem_name has to be parsed last in order to avoid a conflict with other elements of the model
+        entities.append(chem_name)
+
+        # logic for finding all the elements in any order
+        combined_entities = create_entities_list(entities)
+        root_phrase = OneOrMore(combined_entities + Optional(SkipTo(combined_entities)))('root_phrase')
+        return root_phrase
+
+    def interpret(self, result, start, end):
+        # print(etree.tostring(result))
+        if result is None:
+            return
+        property_entities = {}
+
+        if hasattr(self.model, 'dimensions') and not self.model.dimensions:
+            # the specific entities of a DimensionlessModel are retrieved explicitly and packed into a dictionary
+            raw_value = first(result.xpath('./raw_value/text()'))
+            log.debug(raw_value)
+            if not raw_value and self.model.fields['raw_value'].required and not self.model.fields['raw_value'].contextual:
+                requirements = False
+            property_entities.update({"raw_value": raw_value})
+
+        elif hasattr(self.model, 'dimensions') and self.model.dimensions:
+            # the specific entities of a QuantityModel are retrieved explicitly and packed into a dictionary
+            # print(etree.tostring(result))
+            raw_value = first(result.xpath('./raw_value/text()'))
+            raw_units = first(result.xpath('./raw_units/text()'))
+            factorised_power = first(result.xpath('./factorised_power/text()'))
+            if raw_value and factorised_power:
+                raw_value = raw_value + '×' + factorised_power
+            property_entities.update({"raw_value": raw_value,
+                                      "raw_units": raw_units})
+
+        for field_name, field in six.iteritems(self.model.fields):
+            if field_name not in ['raw_value', 'raw_units', 'value', 'units', 'error']:
+                try:
+                    data = self._get_data(field_name, field, result)
+                    if data is not None:
+                        property_entities.update(data)
+                # if field is required, but empty, the requirements have not been met
+                except TypeError as e:
+                    log.debug(self.model)
+                    log.debug(e)
+
+        model_instance = None
+        if property_entities.keys():
+            model_instance = self.model(**property_entities)
+
+        if model_instance and model_instance.noncontextual_required_fulfilled:
+            # records the parser that was used to generate this record, can be used for evaluation
+            model_instance.record_method = self.__class__.__name__
+            yield model_instance
+
