@@ -463,6 +463,11 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
 class AutoTableParserFactorisedPower(AutoTableParser):
     """ Additions for automated parsing of tables"""
 
+    def __init__(self, factorised_power=False, chem_name=(cem | chemical_label | lenient_chemical_label)):
+        super(AutoTableParserFactorisedPower, self).__init__()
+        self.chem_name = chem_name
+        self.factorised_power = factorised_power
+
     @property
     def root(self):
         # is always found, our models currently rely on the compound
@@ -485,7 +490,11 @@ class AutoTableParserFactorisedPower(AutoTableParser):
         elif hasattr(self.model, 'dimensions') and self.model.dimensions:
             # the mandatory elements of Quantity model are grouped into a entities list
             # print(self.model, self.model.dimensions)
-            unit_element = Group(Optional(R("^10[2-9]$")('factorised_power')) +
+            if self.factorised_power:
+                unit_element = Group(Optional(R("^10[2-9]$")('factorised_power')) +
+                    construct_unit_element(self.model.dimensions).with_condition(match_dimensions_of(self.model))('raw_units'))
+            else:
+                unit_element = Group(
                 construct_unit_element(self.model.dimensions).with_condition(match_dimensions_of(self.model))('raw_units'))
             specifier = self.model.specifier.parse_expression('specifier') + Optional(W('/')) + Optional(W('(') | W('[')).hide() + Optional(
                 unit_element)
