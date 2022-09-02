@@ -75,6 +75,7 @@ class Document(BaseDocument):
         :param list[chemdataextractor.doc.element.BaseElement|string] elements: Elements in this Document.
         :keyword Config config: (Optional) Config file for the Document.
         :keyword list[BaseModel] models: (Optional) Models that the Document should extract data for.
+        :keyword list[chemdataextractor.doc.element.BaseElement subclass] skip_elements: (Optional) Element types to be skipped in parsing (copied from branch SRL-plus-subsentence-confidence)
         """
         self._elements = []
         for element in elements:
@@ -96,7 +97,11 @@ class Document(BaseDocument):
             self.models = kwargs['models']
         else:
             self._models = []
-
+        # from ti250 branch
+        if 'skip_elements' in kwargs:
+            self.skip_elements = kwargs["skip_elements"]
+        else:
+            self.skip_elements = []
         # Sets parameters from configuration file
         for element in elements:
             if callable(getattr(element, 'set_config', None)):
@@ -228,6 +233,10 @@ class Document(BaseDocument):
 
         # Main loop, over all elements in the document
         for i, el in enumerate(self.elements):
+
+            if type(el) in self.skip_elements:
+                continue
+
             log.debug("Element %d, type %s" %(i, str(type(el))))
             last_id_record = None
 
