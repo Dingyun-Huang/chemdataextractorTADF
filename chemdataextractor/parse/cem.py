@@ -214,7 +214,7 @@ class CompoundParser(BaseSentenceParser):
 
         # Chemical name with an informal label after
         # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
-        return Group(Group(model_names_expression)('compound') | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
+        return Group(model_names_expression | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
 
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object

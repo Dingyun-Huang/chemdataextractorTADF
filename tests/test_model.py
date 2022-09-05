@@ -104,10 +104,9 @@ class TestModel(unittest.TestCase):
         test_sentence = Sentence('As expected, CZ-TTR exhibited an ΔEST of 0.10 eV.')
 
         Compound.update_abbrev(abbreviation_definitions)
-        # TODO: check is the new parse rule active?
         test_sentence.models = [Compound]
         result = test_sentence.records.serialize()
-        self.assertEqual(result, [{'Compound': {'names': ['CZ-TTR']}}])
+        self.assertEqual([{'Compound': {'names': ['CZ-TTR']}}], result)
 
     def test_is_superset(self):
         class A(BaseModel):

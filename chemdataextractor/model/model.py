@@ -21,7 +21,7 @@ from ..parse.nmr import NmrParser
 from ..parse.tg import TgParser
 from ..parse.uvvis import UvvisParser
 from ..parse.elements import R, I, Optional, W, Group, NoMatch
-from ..parse.actions import merge, join
+from ..parse.actions import merge, join, fix_whitespace
 from ..model.units.quantity_model import QuantityModel, DimensionlessModel
 from ..parse.auto import AutoTableParser, AutoSentenceParser
 from ..parse.apparatus import ApparatusParser
@@ -101,17 +101,19 @@ class Compound(BaseModel):
                 new_name_expression = W(short_tokens[0])
                 for token in short_tokens[1:]:
                     new_name_expression = new_name_expression + W(token)
-                new_name_expression = Group(new_name_expression).add_action(merge)('names')
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
             else:
                 new_name_expression = I(short_tokens[0])
                 for token in short_tokens[1:]:
                     new_name_expression = new_name_expression + I(token)
-                new_name_expression = Group(new_name_expression).add_action(merge)('names')
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
             if not cls.names.parse_expression:
                 cls.names.parse_expression = new_name_expression
             else:
-                cls.names.parse_expression = new_name_expression | cls.names.parse_expression
+                cls.names.parse_expression = Group(new_name_expression)('compound') | cls.names.parse_expression
         return
+
+    # TODO: Resetting the updates from update_abbrev
 
     def construct_label_expression(self, label):
         return W(label)('labels')
