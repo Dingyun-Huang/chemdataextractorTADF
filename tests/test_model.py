@@ -98,6 +98,17 @@ class TestModel(unittest.TestCase):
 
         self.assertEqual(results, {'NeelTemperature': {'raw_value': '300', 'raw_units': 'K', 'value': [300.0], 'units': 'Kelvin^(1.0)', 'specifier': 'TN'}})
 
+    def test_model_update_abbreviation_definitions(self):
+        elements = [Sentence('We designed a TADF emitter, 2-(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (CZ-TTR).')]
+        abbreviation_definitions = elements[0].abbreviation_definitions
+        test_sentence = Sentence('As expected, CZ-TTR exhibited an ΔEST of 0.10 eV.')
+
+        Compound.update_abbrev(abbreviation_definitions)
+        # TODO: check is the new parse rule active?
+        test_sentence.models = [Compound]
+        result = test_sentence.records.serialize()
+        self.assertEqual(result, [{'Compound': {'names': ['CZ-TTR']}}])
+
     def test_is_superset(self):
         class A(BaseModel):
             attribute_1 = StringType()

@@ -265,12 +265,12 @@ class Document(BaseDocument):
             # 2. Update the relevant models
             element_definitions = el.definitions
             chemical_defs = el.chemical_definitions
+            abbreviation_definitions = el.abbreviation_definitions
 
             for model in el._streamlined_models:
                 if hasattr(model, 'is_id_only'):
                     model.update(chemical_defs)
-                # TODO(ti250): Why is this an if-else? Shouldn't we be updating this for any model?
-                # - it was this way before I changed this...
+                    model.update_abbrev(abbreviation_definitions)
                 else:
                     model.update(element_definitions)
 

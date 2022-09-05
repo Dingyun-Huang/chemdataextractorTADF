@@ -87,6 +87,32 @@ class Compound(BaseModel):
                 cls.labels.parse_expression = cls.labels.parse_expression | new_label_expression
         return
 
+    @classmethod
+    def update_abbrev(cls, abbreviation_definitions, strict=True):
+        """Update the Compound name abbreviation parse expression
+
+        Arguments:
+            definitions {list} -- list of abbreviation definitions found in this element
+        """
+        log.debug("Updating Compound name abbreviations.")
+        for definition in abbreviation_definitions:
+            short_tokens = definition[0]
+            if strict:
+                new_name_expression = W(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + W(token)
+                new_name_expression = Group(new_name_expression).add_action(merge)('names')
+            else:
+                new_name_expression = I(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + I(token)
+                new_name_expression = Group(new_name_expression).add_action(merge)('names')
+            if not cls.names.parse_expression:
+                cls.names.parse_expression = new_name_expression
+            else:
+                cls.names.parse_expression = new_name_expression | cls.names.parse_expression
+        return
+
     def construct_label_expression(self, label):
         return W(label)('labels')
 
