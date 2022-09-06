@@ -14,7 +14,7 @@ import logging
 from .base import BaseModel, StringType, ListType, ModelType, SetType
 from .units.temperature import TemperatureModel
 from .units.length import LengthModel
-from ..parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, labels_only, roles_only
+from ..parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, labels_only, roles_only, chemical_name
 from ..parse.ir import IrParser
 from ..parse.mp_new import MpParser
 from ..parse.nmr import NmrParser
@@ -34,6 +34,7 @@ class Compound(BaseModel):
     labels = SetType(StringType(), parse_expression=NoMatch(), updatable=True)
     roles = SetType(StringType(), parse_expression=roles_only, updatable=True)
     parsers = [CompoundParser(), CompoundHeadingParser(), ChemicalLabelParser(), CompoundTableParser()]
+    current_doc_compound_expressions = NoMatch()
     # parsers = [CompoundParser(), CompoundHeadingParser(), ChemicalLabelParser()]
     # parsers = [CompoundParser()]
 
@@ -88,14 +89,14 @@ class Compound(BaseModel):
         return
 
     @classmethod
-    def update_abbrev(cls, abbreviation_definitions, strict=True):
+    def update_abbrev(cls, cem_abbreviation_definitions, strict=True):
         """Update the Compound name abbreviation parse expression
 
         Arguments:
             definitions {list} -- list of abbreviation definitions found in this element
         """
         log.debug("Updating Compound name abbreviations.")
-        for definition in abbreviation_definitions:
+        for definition in cem_abbreviation_definitions:
             short_tokens = definition[0]
             if strict:
                 new_name_expression = W(short_tokens[0])
@@ -107,13 +108,16 @@ class Compound(BaseModel):
                 for token in short_tokens[1:]:
                     new_name_expression = new_name_expression + I(token)
                 new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
-            if not cls.names.parse_expression:
-                cls.names.parse_expression = new_name_expression
+            if not cls.current_doc_compound_expressions:
+                cls.current_doc_compound_expressions = new_name_expression
             else:
-                cls.names.parse_expression = Group(new_name_expression)('compound') | cls.names.parse_expression
+                cls.current_doc_compound_expressions = Group(new_name_expression)('compound')
         return
 
     # TODO: Resetting the updates from update_abbrev
+    @classmethod
+    def reset_current_doc_compound(cls):
+        cls.current_doc_compound_expressions = NoMatch()
 
     def construct_label_expression(self, label):
         return W(label)('labels')

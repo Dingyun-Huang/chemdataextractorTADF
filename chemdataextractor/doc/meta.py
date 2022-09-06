@@ -112,6 +112,10 @@ class MetaData(BaseElement):
         return []
 
     @property
+    def cem_abbreviation_definitions(self):
+        return []
+
+    @property
     def definitions(self):
         return []
 

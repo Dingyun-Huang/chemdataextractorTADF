@@ -196,6 +196,14 @@ class CaptionedElement(BaseElement):
         return self.caption.abbreviation_definitions
 
     @property
+    def cem_abbreviation_definitions(self):
+        """
+        A list of all abbreviation definitions in this Document. Each abbreviation is in the form
+        (:class:`str` abbreviation, :class:`str` long form of abbreviation, :class:`str` ner_tag)
+        """
+        return self.caption.cem_abbreviation_definitions
+
+    @property
     def ner_tags(self):
         """
         A list of all Named Entity Recognition tags in the caption for this element.

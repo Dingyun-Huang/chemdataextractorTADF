@@ -265,12 +265,12 @@ class Document(BaseDocument):
             # 2. Update the relevant models
             element_definitions = el.definitions
             chemical_defs = el.chemical_definitions
-            abbreviation_definitions = el.abbreviation_definitions
+            cem_abbreviation_definitions = el.cem_abbreviation_definitions
 
             for model in el._streamlined_models:
                 if hasattr(model, 'is_id_only'):
                     model.update(chemical_defs)
-                    model.update_abbrev(abbreviation_definitions)
+                    model.update_abbrev(cem_abbreviation_definitions)
                 else:
                     model.update(element_definitions)
 
@@ -527,7 +527,7 @@ class Document(BaseDocument):
         for el in self.elements:
             for model in el._streamlined_models:
                 model.reset_updatables()
-
+        Compound.reset_current_doc_compound()
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
         #     if record.required_fulfilled:

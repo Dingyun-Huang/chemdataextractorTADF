@@ -199,7 +199,7 @@ class CompoundParser(BaseSentenceParser):
     @property
     def root(self):
         label = self.model.labels.parse_expression('labels')
-        model_names_expression = self.model.names.parse_expression
+        current_doc_compound_expressions = self.model.current_doc_compound_expressions
         label_name_cem = (label + optdelim + chemical_name)('compound')
 
         label_before_name = Optional(synthesis_of | to_give) + label_type + optdelim + label_name_cem + ZeroOrMore(optdelim + cc + optdelim + label_name_cem)
@@ -214,7 +214,7 @@ class CompoundParser(BaseSentenceParser):
 
         # Chemical name with an informal label after
         # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
-        return Group(model_names_expression | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
+        return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
 
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object
