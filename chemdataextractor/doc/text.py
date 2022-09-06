@@ -380,6 +380,14 @@ class Text(collections.Sequence, BaseText):
         return [ab for sent in self.sentences for ab in sent.abbreviation_definitions]
 
     @property
+    def cem_abbreviation_definitions(self):
+        """
+        A list of all abbreviation definitions in this Document. Each abbreviation is in the form
+        (:class:`str` abbreviation, :class:`str` long form of abbreviation, :class:`str` ner_tag)
+        """
+        return [ab for sent in self.sentences for ab in sent.cem_abbreviation_definitions]
+
+    @property
     def records(self):
         """All records found in the object, as a list of :class:`~chemdataextractor.model.base.BaseModel`."""
         return ModelList(*[r for sent in self.sentences for r in sent.records])
@@ -476,6 +484,7 @@ class Sentence(BaseText):
     word_tokenizer = BertWordTokenizer()
     lexicon = ChemLexicon()
     abbreviation_detector = ChemAbbreviationDetector()
+    cem_abbreviation_detector = TADFAbbreviationDetector()
     taggers = [ChemCrfPosTagger(), cem_tagger]
 
     def __init__(self, text, start=0, end=None, word_tokenizer=None, lexicon=None, abbreviation_detector=None, pos_tagger=None, ner_tagger=None, **kwargs):
@@ -582,20 +591,27 @@ class Sentence(BaseText):
         abbreviations = []
         if self.abbreviation_detector:
             # log.debug('Detecting abbreviations')
-            if isinstance(self.abbreviation_detector, TADFAbbreviationDetector):
-                for short_name, long_name in self.abbreviation_detector.detect(self):
-                    abbreviations.append(([short_name], [long_name], 'CM'))
-                return abbreviations
-            else:
-                ners = self.unprocessed_ner_tags
-                for abbr_span, long_span in self.abbreviation_detector.detect_spans(self.raw_tokens):
-                    abbr = self.raw_tokens[abbr_span[0]:abbr_span[1]]
-                    long = self.raw_tokens[long_span[0]:long_span[1]]
-                    # Check if long is entirely tagged as one named entity type
-                    long_tags = ners[long_span[0]:long_span[1]]
-                    unique_tags = set([tag[2:] for tag in long_tags if tag is not None])
-                    tag = long_tags[0][2:] if None not in long_tags and len(unique_tags) == 1 else None
-                    abbreviations.append((abbr, long, tag))
+            ners = self.unprocessed_ner_tags
+            for abbr_span, long_span in self.abbreviation_detector.detect_spans(self.raw_tokens):
+                abbr = self.raw_tokens[abbr_span[0]:abbr_span[1]]
+                long = self.raw_tokens[long_span[0]:long_span[1]]
+                # Check if long is entirely tagged as one named entity type
+                long_tags = ners[long_span[0]:long_span[1]]
+                unique_tags = set([tag[2:] for tag in long_tags if tag is not None])
+                tag = long_tags[0][2:] if None not in long_tags and len(unique_tags) == 1 else None
+                abbreviations.append((abbr, long, tag))
+        return abbreviations
+
+    @memoized_property
+    def cem_abbreviation_definitions(self):
+        """
+        A list of all abbreviation definitions in this Document. Each abbreviation is in the form
+        (:class:`str` abbreviation, :class:`str` long form of abbreviation, :class:`str` ner_tag)
+        """
+        abbreviations = []
+        if self.cem_abbreviation_detector:
+            for short_name, long_name in self.cem_abbreviation_detector.detect(self):
+                abbreviations.append((short_name, long_name, 'CM'))
         return abbreviations
 
     @memoized_property
