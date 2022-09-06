@@ -67,45 +67,45 @@ class AbbreviationDetector(object):
             # Find potential abbreviation and full names in the form short_name=long_name
             if t1 == '=':
                 # abbr = long
-                abbr_span = (i-1, i)  # abbreviation of 1 tokens is allowed only.
+                abbr_span = (i - 1, i)  # abbreviation of 1 tokens is allowed only.
                 abbr = tokens[abbr_span[0]:abbr_span[1]]
                 if i > 0 and self._is_allowed_abbr(abbr):
-                    long_span = self._get_long_span(tokens, abbr_span, start=i+1)
-                    #long = self._get_long(abbr, tokens[i+1:], fix_left=True)
+                    long_span = self._get_long_span(tokens, abbr_span, start=i + 1)
+                    # long = self._get_long(abbr, tokens[i+1:], fix_left=True)
                     if long_span:
                         candidates.append((abbr_span, long_span))
-                        #candidates.append((abbr, long))
+                        # candidates.append((abbr, long))
             # Find potential abbreviation and full names in the form long_name (short_name)
             if t1 == '(':
-                for j, t2 in enumerate(tokens[i+1:]):
+                for j, t2 in enumerate(tokens[i + 1:]):
                     if t2 in {')', ';', ','}:
-                        bracket_spans.append((i+1, i+j+1))
+                        bracket_spans.append((i + 1, i + j + 1))
                         break
         for span in bracket_spans:
             inside = tokens[span[0]:span[1]]
             if self._is_allowed_abbr(inside):
                 # long ( abbr ) or ; or ,
-                #long = self._get_long(inside, tokens[:span[0]-1], fix_right=True)
-                long_span = self._get_long_span(tokens, span, end=span[0]-1)
+                # long = self._get_long(inside, tokens[:span[0]-1], fix_right=True)
+                long_span = self._get_long_span(tokens, span, end=span[0] - 1)
                 if long_span:
                     candidates.append((span, long_span))
-                    #candidates.append((inside, long))
+                    # candidates.append((inside, long))
             elif tokens[span[1]] == ')':
-                if span[0] - 1 > 0 and self._is_allowed_abbr([tokens[span[0]-2]]):
+                if span[0] - 1 > 0 and self._is_allowed_abbr([tokens[span[0] - 2]]):
                     # abbr ( long )
-                    #abbr = [tokens[span[0]-2]]
-                    abbr_span = (span[0]-2, span[0]-1)
-                    #long = self._get_long(abbr, inside, fix_left=True, fix_right=True)
+                    # abbr = [tokens[span[0]-2]]
+                    abbr_span = (span[0] - 2, span[0] - 1)
+                    # long = self._get_long(abbr, inside, fix_left=True, fix_right=True)
                     long_span = self._get_long_span(tokens, abbr_span, start=span[0], end=span[1])
                     if long_span:
                         candidates.append((abbr_span, long_span))
             elif tokens[span[1]] == ',':
-                for j, t2 in enumerate(tokens[span[1]+2:span[1]+4]):
+                for j, t2 in enumerate(tokens[span[1] + 2:span[1] + 4]):
                     if t2 == ')':
                         # ( long , abbr )
-                        #abbr = tokens[span[1]+1:span[1]+2+j]
-                        abbr_span = (span[1]+1, span[1]+2+j)
-                        #long = self._get_long(abbr, inside, fix_left=True, fix_right=True)
+                        # abbr = tokens[span[1]+1:span[1]+2+j]
+                        abbr_span = (span[1] + 1, span[1] + 2 + j)
+                        # long = self._get_long(abbr, inside, fix_left=True, fix_right=True)
                         long_span = self._get_long_span(tokens, abbr_span, start=span[0], end=span[1])
                         if long_span:
                             candidates.append((abbr_span, long_span))
@@ -115,10 +115,10 @@ class AbbreviationDetector(object):
     def _get_long_span(self, tokens, abbr_span, start=None, end=None):
         """"""
         abbr = tokens[abbr_span[0]:abbr_span[1]]
-        #print(abbr)
+        # print(abbr)
         # Get the maximum allowed number of tokens
         max_length = self._max_long_length(abbr)
-        #print(max_length)
+        # print(max_length)
         if start is not None and end is not None:
             if end - start <= max_length and self._is_valid_long(abbr, tokens[start:end]):
                 return start, end
@@ -154,7 +154,6 @@ class AbbreviationDetector(object):
                 if start + i == len(tokens):
                     return None
 
-
     def _is_valid_long(self, abbr, tokens):
         """Return True if a span of tokens is a valid long name"""
 
@@ -165,17 +164,18 @@ class AbbreviationDetector(object):
             l_i = len(long) - 1
             for a_i in range(len(abbr) - 1, -1, -1):
                 current = abbr[a_i].lower()
-                #print('current: %s' % current)
+                # print('current: %s' % current)
                 # Ignore non-alphanumeric  # TODO: Greek!
                 if not current.isalnum():
                     continue
-                while (l_i >= 0 and not long[l_i].lower() == current) or (a_i == 0 and l_i > 0 and long[l_i-1].isalnum()):
+                while (l_i >= 0 and not long[l_i].lower() == current) or (
+                        a_i == 0 and l_i > 0 and long[l_i - 1].isalnum()):
                     # The letters in an abbreviation should appear in the long name
                     # in the same order as in the abbreviation
-                    #print('L: %s' % long[l_i])
+                    # print('L: %s' % long[l_i])
                     l_i -= 1
                 if l_i < 0:
-                    #print('l_i < 0 : fail')
+                    # print('l_i < 0 : fail')
                     return False
                 l_i -= 1
             return True
@@ -294,7 +294,7 @@ def balanced_brackets(myStr):
         elif i in close_list:
             pos = close_list.index(i)
             if ((len(stack) > 0) and
-                (open_list[pos] == stack[len(stack)-1])):
+                    (open_list[pos] == stack[len(stack) - 1])):
                 stack.pop()
             else:
                 return False
@@ -364,27 +364,50 @@ class TADFAbbreviationDetector(object):
                 post_index = post_token[0][0]
                 post_token = post_token[0][1].text
                 if post_token == "(":
-                    for j, t2 in enumerate(tokens[post_index+1:]):
+                    for j, t2 in enumerate(tokens[post_index + 1:]):
                         if t2.text in {")", ",", ";"}:
-                            abbrev_tokens = sent.raw_tokens[post_index+1:post_index+j+1]
+                            abbrev_tokens = sent.raw_tokens[post_index + 1:post_index + j + 1]
                             if self._is_allowed_abbr(abbrev_tokens):
-                                candidate_pairs.append(("".join(abbrev_tokens), long_name.text))
+                                candidate_pairs.append((abbrev_tokens, [long_name.text]))
                                 break
-            # second check is there a = behind.
+                # second check is there a = behind.
                 elif post_token == "=":
-                    for cem in sent.cems:
-                        if cem.start - 2 == long_name.end + 1 and self._is_allowed_abbr([cem.text]):
-                            candidate_pairs.append((cem.text, long_name.text))
-                    pass
+                    abbrev_tokens = []
+                    for j, t2 in enumerate(tokens[post_index + 1:]):
+                        if t2.ner_tag == 'B-CM':
+                            abbrev_tokens.append(t2.text)
+                            k = post_index + 1 + j + 1
+                            while True:
+                                try:
+                                    t3 = tokens[k]
+                                except IndexError as e:
+                                    candidate_pairs.append((abbrev_tokens, [long_name.text]))
+                                    break
+                                if t3.ner_tag == 'I-CM':
+                                    abbrev_tokens.append(t3.text)
+                                    k += 1
+                                else:
+                                    candidate_pairs.append((abbrev_tokens, [long_name.text]))
+                                    break
+                        else:
+                            break
+
             elif len(pre_token) != 0:
                 pre_index = pre_token[0][0]
                 pre_token = pre_token[0][1].text
                 # finally check is there a = ahead.
                 if pre_token == "=":
-                    for cem in sent.cems:
-                        if cem.end + 1 == long_name.start - 2 and self._is_allowed_abbr([cem.text]):
-                            candidate_pairs.append((cem.text, long_name.text))
-                    pass
+                    abbrev_tokens = []
+                    for j, t2 in enumerate(reversed(tokens[:pre_index])):
+                        if t2.ner_tag == 'I-CM':
+                            abbrev_tokens.append(t2.text)
+                        elif t2.ner_tag == 'B-CM':
+                            abbrev_tokens.append(t2.text)
+                            abbrev_tokens.reverse()
+                            candidate_pairs.append((abbrev_tokens, [long_name.text]))
+                            break
+                        else:
+                            break
         return candidate_pairs
 
     def _get_long_names(self, sent):
@@ -407,7 +430,7 @@ class TADFAbbreviationDetector(object):
         """
         results = []
         for short, long in candidates:
-            if (short not in long) and len(long) > len(short):
+            if not all(a in long for a in short) and len(''.join(long)) > len(''.join(short)):
                 results.append((short, long))
         return results
 
