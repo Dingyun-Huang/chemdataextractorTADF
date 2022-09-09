@@ -106,6 +106,7 @@ class TestModel(unittest.TestCase):
         Compound.update_abbrev(abbreviation_definitions)
         test_sentence.models = [Compound]
         result = test_sentence.records.serialize()
+        Compound.reset_current_doc_compound()
         self.assertEqual([{'Compound': {'names': ['CZ-TTR']}}], result)
 
     def test_is_superset(self):

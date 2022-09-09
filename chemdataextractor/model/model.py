@@ -109,9 +109,9 @@ class Compound(BaseModel):
                     new_name_expression = new_name_expression + I(token)
                 new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
             if not cls.current_doc_compound_expressions:
-                cls.current_doc_compound_expressions = new_name_expression
-            else:
                 cls.current_doc_compound_expressions = Group(new_name_expression)('compound')
+            else:
+                cls.current_doc_compound_expressions = Group(new_name_expression)('compound') | cls.current_doc_compound_expressions
         return
 
     # TODO: Resetting the updates from update_abbrev

@@ -33,6 +33,7 @@ from ..model.contextual_range import SentenceRange, ParagraphRange, SectionRange
 from ..text import get_encoding
 from ..config import Config
 from ..parse.cem import chemical_name
+from ..parse.actions import fix_whitespaces_string
 
 
 log = logging.getLogger(__name__)
@@ -397,10 +398,10 @@ class Document(BaseDocument):
             elif isinstance(record, Compound):
                 compound = record
             if compound is not None:
-                for short, long_, entity in self.abbreviation_definitions:
+                for short, long_, entity in self.cem_abbreviation_definitions:
                     if entity == 'CM':
                         name = ' '.join(long_)
-                        abbrev = ' '.join(short)
+                        abbrev = fix_whitespaces_string(' '.join(short))
                         if compound.names:
                             if name in compound.names and abbrev not in compound.names:
                                 compound.names.add(abbrev)
@@ -624,6 +625,13 @@ class Document(BaseDocument):
         """
         return [el for el in self.elements if isinstance(el, MetaData)][0]
 
+    @property
+    def cem_abbreviation_definitions(self):
+        """
+        A list of all abbreviation definitions in this Document. Each abbreviation is in the form
+        (:class:`str` abbreviation, :class:`str` long form of abbreviation, :class:`str` ner_tag)
+        """
+        return [ab for el in self.elements for ab in el.cem_abbreviation_definitions]
 
     @property
     def abbreviation_definitions(self):

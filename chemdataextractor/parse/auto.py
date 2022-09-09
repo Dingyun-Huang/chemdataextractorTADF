@@ -346,7 +346,8 @@ class AutoSentenceParser(BaseAutoParser, BaseSentenceParser):
     @property
     def root(self):
         # is always found, our models currently rely on the compound
-        chem_name = self.chem_name
+        current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
+        chem_name = current_doc_compound_expressions | self.chem_name
         try:
             compound_model = self.model.compound.model_class
             labels = Group(compound_model.labels.parse_expression('labels'))('compound')
@@ -406,7 +407,8 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
     @property
     def root(self):
         # is always found, our models currently rely on the compound
-        chem_name = self.chem_name
+        current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
+        chem_name = current_doc_compound_expressions | self.chem_name
         try:
             compound_model = self.model.compound.model_class
             labels = Group(compound_model.labels.parse_expression('labels'))('compound')

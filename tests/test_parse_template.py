@@ -4,14 +4,22 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 import unittest
-from chemdataextractor.model.model import CurieTemperature
+from chemdataextractor.model.model import CurieTemperature, Compound, StringType, ModelType
+from chemdataextractor.model.units import EnergyModel
 from chemdataextractor.doc import Sentence, Document, Paragraph, Figure, Caption, Title
 from chemdataextractor.parse.template import QuantityModelTemplateParser, MultiQuantityModelTemplateParser
+from chemdataextractor.parse.elements import R
 from lxml import etree
 import pprint
 from chemdataextractor.reader.elsevier import ElsevierXmlReader
 from chemdataextractor.parse.auto import AutoTableParser
 import copy
+
+
+class STSplit(EnergyModel):
+    specifier = StringType(parse_expression=R("^[ΔⲆⲇ∆𝚫𝛥𝜟𝝙𝞓]E[Ss][Tt]$"),
+                           required=True, contextual=False, updatable=True)
+    compound = ModelType(Compound, contextual=True, required=False)
 
 
 class TestQuantityModelTemplate(unittest.TestCase):
@@ -66,6 +74,19 @@ class TestQuantityModelTemplate(unittest.TestCase):
             '1100 K, corresponding to the Curie temperature of BiFeO3')
         expected = b'<root_phrase><raw_value>1100</raw_value><raw_units>K</raw_units><COMMA>,</COMMA><specifier>Curie temperature</specifier><cem_phrase><compound><names>BiFeO3</names></compound></cem_phrase></root_phrase>'
         self.assertEqual(expected, self.parse(s, 'value_specifier_cem_phrase'))
+
+    def test_update_compound_in_document(self):
+        elements = [Sentence('We designed a TADF emitter, 2-(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (CZ-TTR).')]
+        abbreviation_definitions = elements[0].cem_abbreviation_definitions
+        test_sentence = Sentence('As expected, CZ-TTR exhibited an ΔEST of 0.10 eV.')
+        Compound.update_abbrev(abbreviation_definitions)
+        test_sentence.models = [STSplit]
+        result = test_sentence.records.serialize()
+        Compound.reset_current_doc_compound()
+        self.assertEqual([{'Compound': {'names': ['CZ-TTR']}},
+                          {'STSplit': {'raw_value': '0.10', 'raw_units': 'eV', 'value': [0.1],
+                                       'units': 'ElectronVolt^(1.0)', 'specifier': 'ΔEST',
+                                       'compound': {'Compound': {'names': ['CZ-TTR']}}}}], result)
 
 
 class TestMultiQuantityTemplate(unittest.TestCase):

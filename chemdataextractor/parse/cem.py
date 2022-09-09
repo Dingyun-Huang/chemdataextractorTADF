@@ -279,13 +279,13 @@ class CompoundTableParser(BaseTableParser):
     @property
     def root(self):
         # is always found, our models currently rely on the compound
-        model_names_expression = self.model.names.parse_expression
-        chem_name = (cem | chemical_label | lenient_chemical_label | model_names_expression)
+        current_doc_compound_expressions = self.model.current_doc_compound_expressions
+        chem_name = (current_doc_compound_expressions | cem | chemical_label | lenient_chemical_label)
         compound_model = self.model
         labels = compound_model.labels.parse_expression('labels')
         entities = [labels]
 
-        specifier = (I('Formula') | I('Compound') | I('Alloy')).add_action(join)('specifier')
+        specifier = (I('Formula') | I('Compound') | I('Alloy') | I('Compounds')).add_action(join)('specifier')
         entities.append(specifier)
 
         # the optional, user-defined, entities of the model are added, they are tagged with the name of the field
