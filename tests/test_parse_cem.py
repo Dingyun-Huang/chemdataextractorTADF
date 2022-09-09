@@ -15,9 +15,9 @@ import logging
 import unittest
 from lxml import etree
 
-from chemdataextractor.doc.document import Document
-from chemdataextractor.doc.text import Sentence, Heading, Paragraph
-from chemdataextractor.parse.cem import cem_phrase, compound_heading_phrase, chemical_label_phrase
+from chemdataextractor.doc.document import Document, Table
+from chemdataextractor.doc.text import Sentence, Heading, Paragraph, Caption
+from chemdataextractor.parse.cem import cem_phrase, compound_heading_phrase, chemical_label_phrase, CompoundTableParser
 from chemdataextractor.model.model import Compound, MeltingPoint
 
 logging.basicConfig(level=logging.DEBUG)
@@ -469,6 +469,19 @@ class TestParseDocument(unittest.TestCase):
             {'Compound': {'names': [u'5-Bromo-6-pentadecyl-2-hydroxybenzoic acid', u'DBAA'], 'roles': ['product']}},
             {'Compound': {'labels': [u'VII'], 'roles': [u'formula']}}
         ])  # example-3?
+
+    def test_table_CompoundTableParser_update_compound_in_document(self):
+        table = Table(caption=Caption("Example table."),
+                      table_data="tests/data/tables/table_example_4.csv")
+        sentence = Sentence("We report two carbazole-based TADF emitters, "
+                            "namely 2-(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (CZ-TTR), "
+                            " and 2,3-di(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (DCZ-TTR).")
+        d = Document(sentence, table)
+        d.models = [Compound]
+        expected = [{'Compound': {'names': ['CZ-TTR']}},
+                    {'Compound': {'names': ['DCZ-TTR']}}]
+        results = d.tables[0].records.serialize()
+        self.assertEqual(expected, results)
 
 
 if __name__ == '__main__':

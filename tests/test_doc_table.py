@@ -9,13 +9,15 @@ from chemdataextractor.parse.elements import R, I, Optional, Group, Every, Not
 from chemdataextractor.model.base import StringType, ModelType
 from chemdataextractor.model.model import Compound
 from chemdataextractor.parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser
+from chemdataextractor.parse.auto import AutoTableParser
 from chemdataextractor.doc.table import Table
 from chemdataextractor.doc import Caption
-from chemdataextractor.doc import Document
+from chemdataextractor.doc import Document, Sentence
 from chemdataextractor.reader.elsevier import ElsevierXmlReader
 from chemdataextractor.reader.springer import SpringerHtmlReader
 from chemdataextractor.model.units.length import LengthModel
 from chemdataextractor.model.units.temperature import TemperatureModel
+from chemdataextractor.model.units.energy import EnergyModel
 from chemdataextractor.parse.actions import merge
 
 import logging
@@ -24,8 +26,8 @@ import unittest
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-
-inorganic_elements = R('^(X|Ac|Ag|Al|Am|Ar|As|At|Au|B|Ba|Be|Bh|Bi|Bk|Br|C|Ca|Cd|Ce|Cf|Cl|Cm|Cn|Co|Cr|Cs|Cu|Db|Ds|Dy|Er|Es|Eu|F|Fe|Fl|Fm|Fr|Ga|Gd|Ge|H|He|Hf|Hg|Ho|Hs|I|In|Ir|K|Kr|La|Li|Lr|Lu|Lv|Mc|Md|Mg|Mn|Mo|Mt|N|Na|Nb|Nd|Ne|Nh|Ni|No|Np|O|Og|Os|P|Pa|Pb|Pd|Pm|Po|Pr|Pt|Pu|Ra|Rb|Re|Rf|Rg|Rh|Rn|Ru|S|Sb|Sc|Se|Sg|Si|Sm|Sn|Sr|Ta|Tb|Tc|Te|Th|Ti|Tl|Tm|Ts|U|V|W|Xe|Y|Yb|Zn|Zr)$')
+inorganic_elements = R(
+    '^(X|Ac|Ag|Al|Am|Ar|As|At|Au|B|Ba|Be|Bh|Bi|Bk|Br|C|Ca|Cd|Ce|Cf|Cl|Cm|Cn|Co|Cr|Cs|Cu|Db|Ds|Dy|Er|Es|Eu|F|Fe|Fl|Fm|Fr|Ga|Gd|Ge|H|He|Hf|Hg|Ho|Hs|I|In|Ir|K|Kr|La|Li|Lr|Lu|Lv|Mc|Md|Mg|Mn|Mo|Mt|N|Na|Nb|Nd|Ne|Nh|Ni|No|Np|O|Og|Os|P|Pa|Pb|Pd|Pm|Po|Pr|Pt|Pu|Ra|Rb|Re|Rf|Rg|Rh|Rn|Ru|S|Sb|Sc|Se|Sg|Si|Sm|Sn|Sr|Ta|Tb|Tc|Te|Th|Ti|Tl|Tm|Ts|U|V|W|Xe|Y|Yb|Zn|Zr)$')
 
 
 # Model classes used for testing
@@ -68,6 +70,12 @@ class CurieTemperature(TemperatureModel):
     compound = ModelType(Compound, required=False, contextual=True)
 
 
+class STSplit(EnergyModel):
+    specifier = StringType(parse_expression=R("^[ΔⲆⲇ∆𝚫𝛥𝜟𝝙𝞓]E[Ss][Tt]$"),
+                           required=True, contextual=False, updatable=True)
+    compound = ModelType(Compound, contextual=True, required=False)
+
+
 def _get_serialised_records(records, models=None):
     serialized_list = []
     for record in records:
@@ -100,59 +108,94 @@ class TestTable(unittest.TestCase):
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
-                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}}]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
+                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = True
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = True
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
-                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}}]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
+                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = True
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
-                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}}]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}},
+                    {'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = True
@@ -215,118 +258,188 @@ class TestTable(unittest.TestCase):
         CoordinationNumber.cn_label.contextual = False
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}, ]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}, ]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = False
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}, ]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}, ]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = False
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = False
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = True
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = False
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
         CoordinationNumber.cn_label.required = False
         CoordinationNumber.cn_label.contextual = True
         CoordinationNumber.compound.required = False
         CoordinationNumber.compound.contextual = True
-        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O'}},
-                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
+        expected = [{'CoordinationNumber': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k',
+                                            'cn_label': 'Ti-O'}},
+                    {'CoordinationNumber': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
+                    {'CoordinationNumber': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
+                    {'CoordinationNumber': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
+                    {'CoordinationNumber': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
+                    {'CoordinationNumber': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k',
+                                            'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
+                    {'CoordinationNumber': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k',
+                                            'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
+                    {'CoordinationNumber': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k',
+                                            'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}]
         self.do_table_1(expected)
 
     def test_caption_compound(self):
@@ -341,11 +454,17 @@ class TestTable(unittest.TestCase):
         result = []
         for record in table.records:
             result.append(record.serialize())
-        expected = [{'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Mg', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
-                    {'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
-                    {'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Si-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+        expected = [{'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Mg-Mg', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+                    {'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Mg-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+                    {'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Si-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
                     {'Compound': {'names': ['Mg2Si']}}]
-        #print(result)
+        # print(result)
         self.assertCountEqual(expected, result)
 
     def test_unidentified_records_1(self):
@@ -365,10 +484,18 @@ class TestTable(unittest.TestCase):
             elif record.is_unidentified:
                 result.append(["unidentified", record.serialize()])
 
-        expected = [['unidentified', {'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Mg'}}],
-                    ['unidentified', {'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Si'}}],
-                    ['unidentified', {'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Si-Si'}}],
-                   ]
+        expected = [['unidentified', {
+            'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814],
+                                    'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Mg'}}],
+                    ['unidentified', {
+                        'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552],
+                                                'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                                'species': 'Mg-Si'}}],
+                    ['unidentified', {
+                        'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992],
+                                                'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                                'species': 'Si-Si'}}],
+                    ]
         self.assertCountEqual(expected, result)
 
     def test_unidentified_records_2(self):
@@ -388,9 +515,15 @@ class TestTable(unittest.TestCase):
             elif record.is_unidentified:
                 result.append(["unidentified", record.serialize()])
 
-        expected = [{'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Mg', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
-                    {'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Mg-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
-                    {'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992], 'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances', 'species': 'Si-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+        expected = [{'InteratomicDistance': {'raw_value': '3.1814', 'raw_units': 'Å', 'value': [3.1814],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Mg-Mg', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+                    {'InteratomicDistance': {'raw_value': '2.7552', 'raw_units': 'Å', 'value': [2.7552],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Mg-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
+                    {'InteratomicDistance': {'raw_value': '4.4992', 'raw_units': 'Å', 'value': [4.4992],
+                                             'units': 'Angstrom^(1.0)', 'specifier': 'bonddistances',
+                                             'species': 'Si-Si', 'compound': {'Compound': {'names': ['Mg2Si']}}}},
                     {'Compound': {'names': ['Mg2Si']}}]
         self.assertCountEqual(expected, result)
 
@@ -403,12 +536,18 @@ class TestTable(unittest.TestCase):
             print(table.tde_table)
         results = d.records.serialize()
         expected = [
-            {'CurieTemperature': {'raw_value': '122.0', 'raw_units': '(K)', 'value': [122.0], 'units': 'Kelvin^(1.0)', 'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
-            {'CurieTemperature': {'raw_value': '143.5', 'raw_units': '(K)', 'value': [143.5], 'units': 'Kelvin^(1.0)', 'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
-            {'CurieTemperature': {'raw_value': '116.5', 'raw_units': '(K)', 'value': [116.5], 'units': 'Kelvin^(1.0)', 'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
-            {'NeelTemperature': {'raw_value': '167.6', 'raw_units': '(K)', 'value': [167.6], 'units': 'Kelvin^(1.0)', 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
-            {'NeelTemperature': {'raw_value': '278.0', 'raw_units': '(K)', 'value': [278.0], 'units': 'Kelvin^(1.0)', 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
-            {'NeelTemperature': {'raw_value': '181.9', 'raw_units': '(K)', 'value': [181.9], 'units': 'Kelvin^(1.0)', 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'CurieTemperature': {'raw_value': '122.0', 'raw_units': '(K)', 'value': [122.0], 'units': 'Kelvin^(1.0)',
+                                  'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'CurieTemperature': {'raw_value': '143.5', 'raw_units': '(K)', 'value': [143.5], 'units': 'Kelvin^(1.0)',
+                                  'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'CurieTemperature': {'raw_value': '116.5', 'raw_units': '(K)', 'value': [116.5], 'units': 'Kelvin^(1.0)',
+                                  'specifier': 'TD', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'NeelTemperature': {'raw_value': '167.6', 'raw_units': '(K)', 'value': [167.6], 'units': 'Kelvin^(1.0)',
+                                 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'NeelTemperature': {'raw_value': '278.0', 'raw_units': '(K)', 'value': [278.0], 'units': 'Kelvin^(1.0)',
+                                 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
+            {'NeelTemperature': {'raw_value': '181.9', 'raw_units': '(K)', 'value': [181.9], 'units': 'Kelvin^(1.0)',
+                                 'specifier': 'TN', 'compound': {'Compound': {'names': ['PrMnO3']}}}},
         ]
         log.debug(expected)
         log.debug(results)
@@ -420,18 +559,55 @@ class TestTable(unittest.TestCase):
                       models=[CoordinationNumber2])
         result = _get_serialised_records(table.records, models=[CoordinationNumber2])
         expected = [
-            {'CoordinationNumber2': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO2']}}}},
-            {'CoordinationNumber2': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO3']}}}},
-            {'CoordinationNumber2': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO4']}}}},
-            {'CoordinationNumber2': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO5']}}}},
-            {'CoordinationNumber2': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO6']}}}},
-            {'CoordinationNumber2': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO7']}}}},
-            {'CoordinationNumber2': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O', 'compound': {'Compound': {'names': ['TiO8']}}}},
-            {'CoordinationNumber2': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O', 'compound': {'Compound': {'names': ['TiO9']}}}},
-            {'CoordinationNumber2': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti', 'compound': {'Compound': {'names': ['TiO10']}}}}
+            {'CoordinationNumber2': {'raw_value': '78.31676', 'value': [78.31676], 'specifier': 'k', 'cn_label': 'Ti-O',
+                                     'compound': {'Compound': {'names': ['TiO2']}}}},
+            {'CoordinationNumber2': {'raw_value': '1319.193', 'value': [1319.193], 'specifier': 'k', 'cn_label': 'O-O',
+                                     'compound': {'Compound': {'names': ['TiO3']}}}},
+            {'CoordinationNumber2': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O',
+                                     'compound': {'Compound': {'names': ['TiO4']}}}},
+            {'CoordinationNumber2': {'raw_value': '1844.746', 'value': [1844.746], 'specifier': 'k', 'cn_label': 'O-O',
+                                     'compound': {'Compound': {'names': ['TiO5']}}}},
+            {'CoordinationNumber2': {'raw_value': '23707.91', 'value': [23707.91], 'specifier': 'k', 'cn_label': 'Ti-O',
+                                     'compound': {'Compound': {'names': ['TiO6']}}}},
+            {'CoordinationNumber2': {'raw_value': '1881.641', 'value': [1881.641], 'specifier': 'k', 'cn_label': 'O-O',
+                                     'compound': {'Compound': {'names': ['TiO7']}}}},
+            {'CoordinationNumber2': {'raw_value': '2963.489', 'value': [2963.489], 'specifier': 'k', 'cn_label': 'Ti-O',
+                                     'compound': {'Compound': {'names': ['TiO8']}}}},
+            {'CoordinationNumber2': {'raw_value': '2213.910', 'value': [2213.91], 'specifier': 'k', 'cn_label': 'O-O',
+                                     'compound': {'Compound': {'names': ['TiO9']}}}},
+            {'CoordinationNumber2': {'raw_value': '18000.00', 'value': [18000.0], 'specifier': 'k', 'cn_label': 'Ti-Ti',
+                                     'compound': {'Compound': {'names': ['TiO10']}}}}
         ]
         self.assertCountEqual(expected, result)
         Compound.parsers = [CompoundParser(), CompoundHeadingParser(), ChemicalLabelParser(), CompoundTableParser()]
+
+    def test_table_AutoTableParser_update_compound_in_document(self):
+        table = Table(caption=Caption("Example table."),
+                      table_data="tests/data/tables/table_example_4.csv")
+        sentence = Sentence("We report two carbazole-based TADF emitters, "
+                            "namely 2-(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (CZ-TTR), "
+                            " and 2,3-di(9H-carbazol-9-yl)thianthrene 5,5,10,10-tetraoxide (DCZ-TTR).")
+        d = Document(sentence, table)
+        STSplit.parsers = [AutoTableParser()]
+        d.models = [STSplit]
+        expected = [{'STSplit': {'compound': {'Compound': {'names': ['2-(9H-carbazol-9-yl)thianthrene '
+                                                                     '5,5,10,10-tetraoxide',
+                                                                     'CZ-TTR']}},
+                                 'raw_units': 'eV',
+                                 'raw_value': '0.10',
+                                 'specifier': 'ΔEST',
+                                 'units': 'ElectronVolt^(1.0)',
+                                 'value': [0.1]}},
+                    {'STSplit': {'compound': {'Compound': {'names': ['2,3-di(9H-carbazol-9-yl)thianthrene '
+                                                                     '5,5,10,10-tetraoxide',
+                                                                     'DCZ-TTR']}},
+                                 'raw_units': 'eV',
+                                 'raw_value': '0.03',
+                                 'specifier': 'ΔEST',
+                                 'units': 'ElectronVolt^(1.0)',
+                                 'value': [0.03]}}]
+        results = d.records.serialize()
+        self.assertEqual(expected, results)
 
 
 if __name__ == '__main__':
