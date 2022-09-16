@@ -84,7 +84,7 @@ def fix_whitespaces_string(string_result):
 
     string_result = string_result.replace(' , ', ', ')
     for hyphen in HYPHENS:
-        string_result = string_result.replace(' %s ' % hyphen, '%s' % hyphen)
+        string_result = string_result.replace('%s ' % hyphen, '%s' % hyphen).replace(' %s' % hyphen, '%s' % hyphen)
     string_result = re.sub(r'- (.) -', r'-\1-', string_result)
     string_result = string_result.replace(" -", "-")
     string_result = string_result.replace(" ( ", "(").replace(" ) ", ")")
@@ -92,4 +92,5 @@ def fix_whitespaces_string(string_result):
     string_result = string_result.replace(" [ ", "[").replace(" ] ", "]")
     string_result = string_result.replace("( ", "(").replace(" )", ")")
     string_result = string_result.replace("[ ", "[").replace(" ]", "]")
+    string_result = string_result.replace("′ ", "′").replace(" ′", "′")
     return string_result
