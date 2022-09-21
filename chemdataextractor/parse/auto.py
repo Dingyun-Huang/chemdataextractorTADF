@@ -318,6 +318,8 @@ class AutoSentenceParser(BaseAutoParser, BaseSentenceParser):
         try:
             compound_model = self.model.compound.model_class
             labels = compound_model.labels.parse_expression('labels')
+            if compound_model.__name__ == 'ThemeCompound':
+                chem_name = compound_model.parsers[0].root
         except AttributeError:
             labels = NoMatch()
         entities = [labels]
@@ -378,6 +380,8 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
         try:
             compound_model = self.model.compound.model_class
             labels = compound_model.labels.parse_expression('labels')
+            if compound_model.__name__ == 'ThemeCompound':
+                chem_name = compound_model.parsers[0].root
         except AttributeError:
             labels = NoMatch()
         entities = [labels]
