@@ -19,7 +19,8 @@ from .actions import join, fix_whitespace, merge
 from .common import roman_numeral, cc, nnp, hyph, nns, nn, cd, ls, optdelim, rbrct, lbrct, sym, jj, hyphen, quote, \
     dt, delim
 from .base import BaseSentenceParser, BaseTableParser
-from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every
+from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First
+from ..nlp.tokenize import BertWordTokenizer
 from .cem_factory import _CemFactory
 
 log = logging.getLogger(__name__)
@@ -319,3 +320,99 @@ class CompoundTableParser(BaseTableParser):
             if c is not None:
                 c.record_method = self.__class__.__name__
                 yield c
+
+
+class ThemeCompoundParser(BaseSentenceParser):
+    """Chemical name possibly with an associated label."""
+    _label = None
+    _root_phrase = None
+    local_cems = None
+
+    @property
+    def name_blacklist(self):
+        name_expression_blacklist = []
+        wt = BertWordTokenizer()
+        if self.local_cems:
+            for name in self.local_cems:
+                if name in self.model.name_blacklist:
+                    tokenized_name = wt.tokenize(name)
+                    parse_ex = W(tokenized_name[0])
+                    for token in tokenized_name[1:]:
+                        parse_ex += W(token)
+                    name_expression_blacklist.append(parse_ex)
+        return name_expression_blacklist
+
+    @property
+    def label_blacklist(self):
+        label_expression_blacklist = []
+        wt = BertWordTokenizer()
+        for label in self.model.label_blacklist:
+            tokenized_label = wt.tokenize(label)
+            parse_ex = W(tokenized_label[0])
+            for token in tokenized_label[1:]:
+                parse_ex += W(token)
+            label_expression_blacklist.append(parse_ex)
+        label_expression_blacklist += [R("^[1-3]?[4-9]th$"), R("^[1-3]?1st$"), R("^[1-3]?2nd$"), R("^[1-3]?3rd$")]
+        return label_expression_blacklist
+
+    @property
+    def root(self):
+
+        label = self.model.labels.parse_expression('labels')
+        current_doc_compound_expressions = self.model.current_doc_compound_expressions
+        """
+        label_name_cem = (label + optdelim + chemical_name)('compound')
+
+        label_before_name = Optional(synthesis_of | to_give) + label_type + optdelim + label_name_cem + ZeroOrMore(optdelim + cc + optdelim + label_name_cem)
+
+        name_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + chemical_name + Optional(lbrct + Optional(labelled_as + optquote) + (label) + optquote + rbrct))('compound')
+
+        # Very lenient name and label match, with format like "name (Compound 3)"
+        lenient_name_with_bracketed_label = (Start() + Optional(synthesis_of) + lenient_name + lbrct + label_type.hide() + label + rbrct)('compound')
+
+        # Chemical name with a doped label after
+        # name_with_doped_label = (chemical_name + OneOrMore(delim | I('with') | I('for')) + label)('compound')
+
+        # Chemical name with an informal label after
+        # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
+        return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
+        """
+        filtered_cm = Every([Group(cm)('names'), Not(First(self.name_blacklist))])
+        filtered_label = Every([label, Not(First(self.label_blacklist))])
+        filtered_informal_chemical_label = Every([informal_chemical_label, Not(First(self.label_blacklist))])
+        cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_informal_chemical_label)('compound')
+        cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(lbrct + Optional(labelled_as + optquote) + (filtered_label) + optquote + rbrct))('compound')
+        return Group(current_doc_compound_expressions | cm_with_informal_label | cm_with_optional_bracketed_label)('cem_phrase')
+
+    def interpret(self, result, start, end):
+        # TODO: Parse label_type into label model object
+        # print(etree.tostring(result))
+        for cem_el in result.xpath('./compound'):
+            c = self.model(
+                names=cem_el.xpath('./names/text()'),
+                labels=cem_el.xpath('./labels/text()'),
+                roles=['NestingTheme']
+            )
+            c.record_method = self.__class__.__name__
+            yield c
+
+    def parse_sentence(self, sentence):
+        """
+        Parse a sentence. This function is primarily called by the
+        :attr:`~chemdataextractor.doc.text.Sentence.records` property of
+        :class:`~chemdataextractor.doc.text.Sentence`.
+
+        :param list[(token,tag)] tokens: List of tokens for parsing. When this method
+            is called by :attr:`chemdataextractor.doc.text.Sentence.records`,
+            the tokens passed in are :attr:`chemdataextractor.doc.text.Sentence.tagged_tokens`.
+        :returns: All the models found in the sentence.
+        :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
+        """
+
+        self.local_cems = [chemical_mention.text for chemical_mention in sentence.cems]
+        if self.trigger_phrase is not None:
+            trigger_phrase_results = [result for result in self.trigger_phrase.scan(sentence.tokens)]
+        if self.trigger_phrase is None or trigger_phrase_results:
+            for result in self.root.scan(sentence.tokens):
+                for model in self.interpret(*result):
+                    yield model

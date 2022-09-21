@@ -14,7 +14,7 @@ import logging
 from .base import BaseModel, StringType, ListType, ModelType, SetType
 from .units.temperature import TemperatureModel
 from .units.length import LengthModel
-from ..parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, labels_only, roles_only, chemical_name
+from ..parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, ThemeCompoundParser, labels_only, roles_only, chemical_name
 from ..parse.ir import IrParser
 from ..parse.mp_new import MpParser
 from ..parse.nmr import NmrParser
@@ -121,6 +121,13 @@ class Compound(BaseModel):
 
     def construct_label_expression(self, label):
         return W(label)('labels')
+
+
+class ThemeCompound(Compound):
+    roles = None
+    name_blacklist = []
+    label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT']
+    parsers = [ThemeCompoundParser()]
 
 
 class Apparatus(BaseModel):
