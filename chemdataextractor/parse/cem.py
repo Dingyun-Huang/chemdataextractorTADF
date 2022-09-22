@@ -377,7 +377,8 @@ class ThemeCompoundParser(BaseSentenceParser):
         # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
-        filtered_cm = Every([Group(cm)('names'), Not(First(self.name_blacklist))])
+        cm_names = cm('names')
+        filtered_cm = Every([cm_names.add_action(fix_whitespace), Not(First(self.name_blacklist))])
         filtered_label = Every([label, Not(First(self.label_blacklist))])
         filtered_informal_chemical_label = Every([informal_chemical_label, Not(First(self.label_blacklist))])
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_informal_chemical_label)('compound')
