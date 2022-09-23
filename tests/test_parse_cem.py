@@ -233,7 +233,7 @@ class TestParseCemHeading(unittest.TestCase):
 
     def test_example_name(self):
         s = 'EXAMPLE 436 N-tert-Butyl-3-[6′-methyl-4′-(4-trifluoromethoxy-phenyl)-[2,2′]bipyridinyl-6-yl]-benzenesulfonamide'
-        expected = ['<compound><roles>EXAMPLE</roles><labels>436</labels><names>N-tert-Butyl-3-[6 \u2032-methyl-4 \u2032-(4-trifluoromethoxy-phenyl)-[2,2 \u2032]bipyridinyl-6-yl]-benzenesulfonamide</names></compound>']
+        expected = ['<compound><roles>EXAMPLE</roles><labels>436</labels><names>N-tert-Butyl-3-[6\u2032-methyl-4\u2032-(4-trifluoromethoxy-phenyl)-[2,2\u2032]bipyridinyl-6-yl]-benzenesulfonamide</names></compound>']
         self.do_parse(s, expected)
 
     def test_label_list(self):
@@ -344,7 +344,7 @@ class TestParseHeading(unittest.TestCase):
     def test_label_14(self):
         """"""
         s = '1-(3,4-Dibenzyloxycinnamoyl)-3,4′-dibenzyloxyresveratrol (14):'
-        expected = [{'Compound': {'labels': [u'14'], 'names': [u'1-(3,4-Dibenzyloxycinnamoyl)-3,4 \u2032-dibenzyloxyresveratrol']}}]
+        expected = [{'Compound': {'labels': [u'14'], 'names': [u'1-(3,4-Dibenzyloxycinnamoyl)-3,4\u2032-dibenzyloxyresveratrol']}}]
         self.do_parse(s, expected)
 
     def test_section_decimal(self):

@@ -64,9 +64,9 @@ def fix_whitespace(tokens, start, result):
         for child in e.iter():
             # if check added by Juraj, it has to exist
             if child.text:
-                child.text = child.text.replace(' , ', ', ')
+                child.text = child.text.replace(', ', ',').replace(' ,', ',')
                 for hyphen in HYPHENS:
-                    child.text = child.text.replace(' %s ' % hyphen, '%s' % hyphen)
+                    child.text = child.text.replace('%s ' % hyphen, '%s' % hyphen).replace(' %s' % hyphen, '%s' % hyphen)
                 child.text = re.sub(r'- (.) -', r'-\1-', child.text)
                 child.text = child.text.replace(" -", "-")
                 child.text = child.text.replace(" : ", ":").replace(" ) ", ")")
@@ -76,13 +76,14 @@ def fix_whitespace(tokens, start, result):
                 child.text = child.text.replace(" [ ", "[").replace(" ] ", "]")
                 child.text = child.text.replace("( ", "(").replace(" )", ")")
                 child.text = child.text.replace("[ ", "[").replace(" ]", "]")
+                child.text = child.text.replace("′ ", "′").replace(" ′", "′")
     return result
 
 
 def fix_whitespaces_string(string_result):
     """Fix whitespace around hyphens and commas. Can be used to remove whitespace tokenization artefacts."""
 
-    string_result = string_result.replace(' , ', ', ')
+    string_result = string_result.replace(', ', ', ').replace(' ,', ',')
     for hyphen in HYPHENS:
         string_result = string_result.replace('%s ' % hyphen, '%s' % hyphen).replace(' %s' % hyphen, '%s' % hyphen)
     string_result = re.sub(r'- (.) -', r'-\1-', string_result)
