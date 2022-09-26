@@ -19,8 +19,9 @@ from .actions import join, fix_whitespace, merge
 from .common import roman_numeral, cc, nnp, hyph, nns, nn, cd, ls, optdelim, rbrct, lbrct, sym, jj, hyphen, quote, \
     dt, delim
 from .base import BaseSentenceParser, BaseTableParser
-from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First
+from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First, And
 from ..nlp.tokenize import BertWordTokenizer
+from ..text import HYPHENS, SLASHES
 from .cem_factory import _CemFactory
 
 log = logging.getLogger(__name__)
@@ -332,14 +333,18 @@ class ThemeCompoundParser(BaseSentenceParser):
     def name_blacklist(self):
         name_expression_blacklist = []
         wt = BertWordTokenizer()
+        # blacklist the local cems in this sentence to enhance performance.
         if self.local_cems:
             for name in self.local_cems:
+                tokenized_name = wt.tokenize(name)
+                parse_ex = []
+                for token in tokenized_name:
+                        # also blacklist subnames in the name. Otherwise: A/B blacklisting A/B will let B slip out blacklisting
+                    if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}', '=', '.'}:
+                        name_expression_blacklist.append(Not(W(token)))
+                    parse_ex.append(W(token))
                 if name in self.model.name_blacklist:
-                    tokenized_name = wt.tokenize(name)
-                    parse_ex = W(tokenized_name[0])
-                    for token in tokenized_name[1:]:
-                        parse_ex += W(token)
-                    name_expression_blacklist.append(parse_ex)
+                    name_expression_blacklist.append(Not(And(parse_ex)))
         return name_expression_blacklist
 
     @property
@@ -351,8 +356,8 @@ class ThemeCompoundParser(BaseSentenceParser):
             parse_ex = W(tokenized_label[0])
             for token in tokenized_label[1:]:
                 parse_ex += W(token)
-            label_expression_blacklist.append(parse_ex)
-        label_expression_blacklist += [R("^[1-3]?[4-9]th$"), R("^[1-3]?1st$"), R("^[1-3]?2nd$"), R("^[1-3]?3rd$")]
+            label_expression_blacklist.append(Not(parse_ex))
+        label_expression_blacklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")), Not(R("^[1-3]?3rd$"))]
         return label_expression_blacklist
 
     @property
@@ -378,9 +383,9 @@ class ThemeCompoundParser(BaseSentenceParser):
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
         cm_names = cm('names')
-        filtered_cm = Every([cm_names.add_action(fix_whitespace), Not(First(self.name_blacklist))])
+        filtered_cm = Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist)
         filtered_label = Every([label, Not(First(self.label_blacklist))])
-        filtered_informal_chemical_label = Every([informal_chemical_label, Not(First(self.label_blacklist))])
+        filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_informal_chemical_label)('compound')
         cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(lbrct + Optional(labelled_as + optquote) + (filtered_label) + optquote + rbrct))('compound')
         return Group(current_doc_compound_expressions | cm_with_informal_label | cm_with_optional_bracketed_label)('cem_phrase')

@@ -227,7 +227,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def single_cem(self):
         """Any cem"""
-        return Group(cem | chemical_label | Group(chemical_name)('compound'))
+        return Group(self.model.compound.model_class.current_doc_compound_expressions | cem | chemical_label | Group(chemical_name)('compound'))
 
     @property
     def unit(self):
