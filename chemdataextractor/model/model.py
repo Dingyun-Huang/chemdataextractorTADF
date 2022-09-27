@@ -126,7 +126,7 @@ class Compound(BaseModel):
 class ThemeCompound(Compound):
     roles = None
     name_blacklist = []
-    label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT']
+    label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
     parsers = [ThemeCompoundParser()]
 
 

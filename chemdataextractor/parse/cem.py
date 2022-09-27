@@ -19,7 +19,7 @@ from .actions import join, fix_whitespace, merge
 from .common import roman_numeral, cc, nnp, hyph, nns, nn, cd, ls, optdelim, rbrct, lbrct, sym, jj, hyphen, quote, \
     dt, delim
 from .base import BaseSentenceParser, BaseTableParser
-from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First, And
+from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First, And, FollowedBy
 from ..nlp.tokenize import BertWordTokenizer
 from ..text import HYPHENS, SLASHES
 from .cem_factory import _CemFactory
@@ -323,6 +323,11 @@ class CompoundTableParser(BaseTableParser):
                 yield c
 
 
+suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
+          W('based') | W('substituted') | W('modified'))
+
+not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
+
 class ThemeCompoundParser(BaseSentenceParser):
     """Chemical name possibly with an associated label."""
     _label = None
@@ -331,7 +336,7 @@ class ThemeCompoundParser(BaseSentenceParser):
 
     @property
     def name_blacklist(self):
-        name_expression_blacklist = []
+        name_expression_blacklist = [Not(R('oxy$')), Not(R('y$'))]
         wt = BertWordTokenizer()
         # blacklist the local cems in this sentence to enhance performance.
         if self.local_cems:
@@ -383,7 +388,7 @@ class ThemeCompoundParser(BaseSentenceParser):
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
         cm_names = cm('names')
-        filtered_cm = Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist)
+        filtered_cm = not_prefix + Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
         filtered_label = Every([label, Not(First(self.label_blacklist))])
         filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_informal_chemical_label)('compound')
@@ -414,7 +419,7 @@ class ThemeCompoundParser(BaseSentenceParser):
         :returns: All the models found in the sentence.
         :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
         """
-
+        # generating local blacklist
         self.local_cems = [chemical_mention.text for chemical_mention in sentence.cems]
         if self.trigger_phrase is not None:
             trigger_phrase_results = [result for result in self.trigger_phrase.scan(sentence.tokens)]
