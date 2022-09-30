@@ -20,11 +20,12 @@ from ..parse.mp_new import MpParser
 from ..parse.nmr import NmrParser
 from ..parse.tg import TgParser
 from ..parse.uvvis import UvvisParser
-from ..parse.elements import R, I, Optional, W, Group, NoMatch
+from ..parse.elements import R, I, Optional, W, Group, NoMatch, And
 from ..parse.actions import merge, join, fix_whitespace
 from ..model.units.quantity_model import QuantityModel, DimensionlessModel
 from ..parse.auto import AutoTableParser, AutoSentenceParser
 from ..parse.apparatus import ApparatusParser
+from ..nlp import BertWordTokenizer
 
 log = logging.getLogger(__name__)
 
@@ -128,6 +129,17 @@ class ThemeCompound(Compound):
     name_blacklist = []
     label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
     parsers = [ThemeCompoundParser()]
+
+    @classmethod
+    def update_theme_compound(cls, record):
+        wt = BertWordTokenizer()
+        for name in record.names:
+            name_expr = []
+            for token in wt.tokenize(name):
+                name_expr.append(W(token))
+            name_expr = Group(And(name_expr).add_action(join).add_action(fix_whitespace))('names')
+            cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | Group(name_expr)('compound')
+        return
 
 
 class Apparatus(BaseModel):
