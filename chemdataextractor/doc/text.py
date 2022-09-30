@@ -33,7 +33,7 @@ from .element import BaseElement
 from ..parse.definitions import specifier_definition
 from ..parse.cem import chemical_name, cem_phrase
 from ..parse.quantity import construct_quantity_re
-from ..model.model import Compound, NmrSpectrum, IrSpectrum, UvvisSpectrum, MeltingPoint, GlassTransition
+from ..model.model import Compound, NmrSpectrum, IrSpectrum, UvvisSpectrum, MeltingPoint, GlassTransition, ThemeCompound
 
 
 log = logging.getLogger(__name__)
@@ -860,6 +860,8 @@ class Sentence(BaseText):
                                     found = True
                             if found:
                                 continue
+                            if isinstance(record, ThemeCompound):
+                                ThemeCompound.update_theme_compound(record)
                         elif hasattr(record, 'compound') and record.compound is not None:
                             seen_labels.update(record.compound.labels)
                         records.append(record)
