@@ -21,7 +21,7 @@ from ..parse.nmr import NmrParser
 from ..parse.tg import TgParser
 from ..parse.uvvis import UvvisParser
 from ..parse.elements import R, I, Optional, W, Group, NoMatch, And
-from ..parse.actions import merge, join, fix_whitespace
+from ..parse.actions import merge, join, fix_whitespace, fix_whitespaces_string
 from ..model.units.quantity_model import QuantityModel, DimensionlessModel
 from ..parse.auto import AutoTableParser, AutoSentenceParser
 from ..parse.apparatus import ApparatusParser
@@ -139,6 +139,37 @@ class ThemeCompound(Compound):
                 name_expr.append(W(token))
             name_expr = Group(And(name_expr).add_action(join).add_action(fix_whitespace))('names')
             cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | Group(name_expr)('compound')
+        return
+
+    @classmethod
+    def update_abbrev(cls, cem_abbreviation_definitions, strict=True):
+        """Update the Compound name abbreviation parse expression excluding blacklisted names
+
+        Arguments:
+            definitions {list} -- list of abbreviation definitions found in this element
+        """
+        log.debug("Updating Compound name abbreviations.")
+        for definition in cem_abbreviation_definitions:
+            short_tokens = definition[0]
+            long_tokens = definition[1]
+            if (fix_whitespaces_string(" ".join(short_tokens)) in cls.name_blacklist or
+               fix_whitespaces_string(" ".join(long_tokens)) in cls.name_blacklist):
+                return
+            if strict:
+                new_name_expression = W(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + W(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            else:
+                new_name_expression = I(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + I(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            if not cls.current_doc_compound_expressions:
+                cls.current_doc_compound_expressions = Group(new_name_expression)('compound')
+            else:
+                cls.current_doc_compound_expressions = Group(new_name_expression)(
+                    'compound') | cls.current_doc_compound_expressions
         return
 
 
