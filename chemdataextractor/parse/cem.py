@@ -322,11 +322,76 @@ class CompoundTableParser(BaseTableParser):
                 c.record_method = self.__class__.__name__
                 yield c
 
+#### Phrases for tadf theme compound ####
+
+label_type = (Optional(I('reference') | I('comparative')) + R('^(compound|dye|derivative|structure|molecule|product|formulae?|specimen)s?$', re.I))('roles').add_action(join) + Optional(colon).hide()
+
+synthesis_of = ((I('synthesis') | I('preparation') | I('production') | I('data')) + (I('of') | I('for')))('roles').add_action(join)
+
+to_give = (I('to') + (I('give') | I('yield') | I('afford')) | I('afforded') | I('affording') | I('yielded'))('roles').add_action(join)
+
+label_blacklist = R('^(wR.*|R\d|31P|[12]H|[23]D|15N|14C|[4567890]\d+|2A)$')
+
+prefixed_label = Every([R('^(cis|trans)-((d-)?(\d{1,2}[A-Za-z]{0,2}[′″‴‶‷⁗]?)(-d)?|[LS]\d\d?)$'), Not(bcm | icm)])
+
+#: Chemical label. Very permissive - must be used in context to avoid false positives.
+strict_chemical_label = Not(label_blacklist) + (alphanumeric | roman_numeral | letter_number | prefixed_label)('labels')
+
+lenient_chemical_label = numeric('labels') | Every([R('^([A-Z]\d{1,3})$'), Not(bcm | icm)])('labels') | strict_chemical_label
+
+very_lenient_chemical_label = lenient_numeric('labels') | R('^([A-Z]\d{1,3})$')('labels') | strict_chemical_label
+
+chemical_label = ((label_type + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label)) | (Optional(label_type.hide()) + strict_chemical_label + ZeroOrMore((T('CC') | comma) + strict_chemical_label)))
+
+#: Chemical label with a label type before
+chemical_label_phrase1 = (Optional(synthesis_of) + label_type + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label))
+#: Chemical label with synthesis of before
+chemical_label_phrase2 = (synthesis_of + Optional(label_type) + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label))
+# Chemical label with to give/afforded etc. before, and some restriction after.
+chemical_label_phrase3 = (to_give + Optional(dt) + Optional(label_type) + lenient_chemical_label + Optional(lbrct + OneOrMore(Not(rbrct) + Any()) + rbrct).hide() + (End() | I('as') | colon | comma).hide())
+
+chemical_label_phrase = Group(doped_chemical_label | chemical_label_phrase1 | chemical_label_phrase2 | chemical_label_phrase3)('chemical_label_phrase')
 
 suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
           W('based') | W('substituted') | W('modified'))
 
 not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
+
+
+class ThemeChemicalLabelParser(BaseSentenceParser):
+    """Chemical label occurrences with no associated name."""
+    _label = None
+    _root_phrase = None
+
+    @property
+    def label_blacklist(self):
+        label_expression_blacklist = []
+        wt = BertWordTokenizer()
+        for label in self.model.label_blacklist:
+            tokenized_label = wt.tokenize(label)
+            parse_ex = W(tokenized_label[0])
+            for token in tokenized_label[1:]:
+                parse_ex += W(token)
+            label_expression_blacklist.append(Not(parse_ex))
+        label_expression_blacklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")),
+                                       Not(R("^[1-3]?3rd$"))]
+        return label_expression_blacklist
+
+    @property
+    def root(self):
+        label = self.model.labels.parse_expression('labels')
+        if self._label is label:
+            return self._root_phrase
+        self._root_phrase = Every([(chemical_label_phrase | Group(label)('chemical_label_phrase'))] + self.label_blacklist)
+        self._label = label
+        return self._root_phrase
+
+    def interpret(self, result, start, end):
+        # print(etree.tostring(result))
+        roles = [standardize_role(r) for r in result.xpath('./roles/text()')]
+        for label in result.xpath('./labels/text()'):
+            yield self.model(labels=[label], roles=roles)
+
 
 class ThemeCompoundParser(BaseSentenceParser):
     """Chemical name possibly with an associated label."""
@@ -336,19 +401,20 @@ class ThemeCompoundParser(BaseSentenceParser):
 
     @property
     def name_blacklist(self):
-        name_expression_blacklist = [Not(R('oxy$')), Not(R('y$'))]
+        name_expression_blacklist = [Not(R('oxy$')), Not(R('y$')), Not(R('".$'))]
         wt = BertWordTokenizer()
         # blacklist the local cems in this sentence to enhance performance.
         if self.local_cems:
             for name in self.local_cems:
                 tokenized_name = wt.tokenize(name)
                 parse_ex = []
-                for token in tokenized_name:
-                        # also blacklist subnames in the name. Otherwise: A/B blacklisting A/B will let B slip out blacklisting
-                    if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}', '=', '.'}:
-                        name_expression_blacklist.append(Not(W(token)))
-                    parse_ex.append(W(token))
                 if name in self.model.name_blacklist:
+                    for token in tokenized_name:
+                        # also blacklist subnames in the name. Otherwise:
+                        # A/B blacklisting A/B will let B slip out blacklisting
+                        if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}', '=', '.'}:
+                            name_expression_blacklist.append(Not(W(token)))
+                        parse_ex.append(W(token))
                     name_expression_blacklist.append(Not(And(parse_ex)))
         return name_expression_blacklist
 
@@ -402,7 +468,7 @@ class ThemeCompoundParser(BaseSentenceParser):
             c = self.model(
                 names=cem_el.xpath('./names/text()'),
                 labels=cem_el.xpath('./labels/text()'),
-                roles=['NestingTheme']
+                roles=cem_el.xpath('./roles/text()')
             )
             c.record_method = self.__class__.__name__
             yield c
