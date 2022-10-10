@@ -28,7 +28,7 @@ from .figure import Figure
 from .meta import MetaData
 from ..errors import ReaderError
 from ..model.base import ModelList
-from ..model.model import Compound
+from ..model.model import Compound, ThemeCompound
 from ..model.contextual_range import SentenceRange, ParagraphRange, SectionRange
 from ..text import get_encoding
 from ..config import Config
@@ -274,6 +274,11 @@ class Document(BaseDocument):
                     model.update_abbrev(cem_abbreviation_definitions)
                 else:
                     model.update(element_definitions)
+
+            if isinstance(el, MetaData):
+                if el.doi is not None:
+                    ThemeCompound.name_blacklist.insert(0, el.doi[-10:])
+                    ThemeCompound.blocked_doi = True
 
             # Check any parsers that should be skipped
             if isinstance(el, Title) or isinstance(el, Heading):
@@ -528,7 +533,10 @@ class Document(BaseDocument):
         for el in self.elements:
             for model in el._streamlined_models:
                 model.reset_updatables()
-        Compound.reset_current_doc_compound()
+        ThemeCompound.reset_current_doc_compound()
+        if ThemeCompound.blocked_doi:
+            ThemeCompound.name_blacklist.pop(0)
+            ThemeCompound.blocked_doi = False
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
         #     if record.required_fulfilled:
