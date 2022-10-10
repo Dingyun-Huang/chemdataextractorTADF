@@ -326,31 +326,7 @@ class CompoundTableParser(BaseTableParser):
 
 label_type = (Optional(I('reference') | I('comparative')) + R('^(compound|dye|derivative|structure|molecule|product|formulae?|specimen)s?$', re.I))('roles').add_action(join) + Optional(colon).hide()
 
-synthesis_of = ((I('synthesis') | I('preparation') | I('production') | I('data')) + (I('of') | I('for')))('roles').add_action(join)
-
-to_give = (I('to') + (I('give') | I('yield') | I('afford')) | I('afforded') | I('affording') | I('yielded'))('roles').add_action(join)
-
-label_blacklist = R('^(wR.*|R\d|31P|[12]H|[23]D|15N|14C|[4567890]\d+|2A)$')
-
-prefixed_label = Every([R('^(cis|trans)-((d-)?(\d{1,2}[A-Za-z]{0,2}[′″‴‶‷⁗]?)(-d)?|[LS]\d\d?)$'), Not(bcm | icm)])
-
-#: Chemical label. Very permissive - must be used in context to avoid false positives.
-strict_chemical_label = Not(label_blacklist) + (alphanumeric | roman_numeral | letter_number | prefixed_label)('labels')
-
-lenient_chemical_label = numeric('labels') | Every([R('^([A-Z]\d{1,3})$'), Not(bcm | icm)])('labels') | strict_chemical_label
-
-very_lenient_chemical_label = lenient_numeric('labels') | R('^([A-Z]\d{1,3})$')('labels') | strict_chemical_label
-
-chemical_label = ((label_type + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label)) | (Optional(label_type.hide()) + strict_chemical_label + ZeroOrMore((T('CC') | comma) + strict_chemical_label)))
-
-#: Chemical label with a label type before
-chemical_label_phrase1 = (Optional(synthesis_of) + label_type + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label))
-#: Chemical label with synthesis of before
-chemical_label_phrase2 = (synthesis_of + Optional(label_type) + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label))
-# Chemical label with to give/afforded etc. before, and some restriction after.
-chemical_label_phrase3 = (to_give + Optional(dt) + Optional(label_type) + lenient_chemical_label + Optional(lbrct + OneOrMore(Not(rbrct) + Any()) + rbrct).hide() + (End() | I('as') | colon | comma).hide())
-
-chemical_label_phrase = Group(doped_chemical_label | chemical_label_phrase1 | chemical_label_phrase2 | chemical_label_phrase3)('chemical_label_phrase')
+chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1 | chemical_label_phrase2 | chemical_label_phrase3)('chemical_label_phrase')
 
 suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
           W('based') | W('substituted') | W('modified'))
@@ -382,7 +358,7 @@ class ThemeChemicalLabelParser(BaseSentenceParser):
         label = self.model.labels.parse_expression('labels')
         if self._label is label:
             return self._root_phrase
-        self._root_phrase = Every([(chemical_label_phrase | Group(label)('chemical_label_phrase'))] + self.label_blacklist)
+        self._root_phrase = Every([(chemical_label_phrase_t | Group(label)('chemical_label_phrase'))] + self.label_blacklist)
         self._label = label
         return self._root_phrase
 
@@ -401,7 +377,7 @@ class ThemeCompoundParser(BaseSentenceParser):
 
     @property
     def name_blacklist(self):
-        name_expression_blacklist = [Not(R('oxy$')), Not(R('y$')), Not(R('".$'))]
+        name_expression_blacklist = [Not(I(self.model.name_blacklist[0])), Not(R('oxy$')), Not(R('y$')), Not(R('".$'))]
         wt = BertWordTokenizer()
         # blacklist the local cems in this sentence to enhance performance.
         if self.local_cems:

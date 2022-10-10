@@ -290,7 +290,7 @@ class Document(BaseDocument):
                 # print(f"\nElement: {el.text}")
                 # print(f"SKIP_PARSERS: {self.skip_parsers}")
 
-            prev_records = el_records
+
             el_records = el.records
             # Save the title compound
             if isinstance(el, Title):
@@ -533,7 +533,10 @@ class Document(BaseDocument):
         for el in self.elements:
             for model in el._streamlined_models:
                 model.reset_updatables()
-        Compound.reset_current_doc_compound()
+        ThemeCompound.reset_current_doc_compound()
+        if ThemeCompound.blocked_doi:
+            ThemeCompound.name_blacklist.pop(0)
+            ThemeCompound.blocked_doi = False
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
         #     if record.required_fulfilled:
