@@ -550,7 +550,7 @@ class ThemeChemicalLabelParser(BaseSentenceParser):
 
     def interpret(self, result, start, end):
         # print(etree.tostring(result))
-        roles = [standardize_role(r) for r in result.xpath('./roles/text()')]
+        roles = ['nesting theme']
         for label in result.xpath('./labels/text()'):
             yield self.model(labels=[label], roles=roles)
 
@@ -630,7 +630,7 @@ class ThemeCompoundParser(BaseSentenceParser):
             c = self.model(
                 names=cem_el.xpath('./names/text()'),
                 labels=cem_el.xpath('./labels/text()'),
-                roles=cem_el.xpath('./roles/text()')
+                roles=['nesting theme']
             )
             c.record_method = self.__class__.__name__
             yield c
