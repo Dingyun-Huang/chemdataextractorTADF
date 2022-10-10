@@ -274,12 +274,12 @@ class Document(BaseDocument):
                     model.update_abbrev(cem_abbreviation_definitions)
                 else:
                     model.update(element_definitions)
-
+                    
             if isinstance(el, MetaData):
                 if el.doi is not None:
                     ThemeCompound.name_blacklist.insert(0, el.doi[-10:])
                     ThemeCompound.blocked_doi = True
-
+                    
             # Check any parsers that should be skipped
             if isinstance(el, Title) or isinstance(el, Heading):
                 self.skip_parsers = []
@@ -533,10 +533,7 @@ class Document(BaseDocument):
         for el in self.elements:
             for model in el._streamlined_models:
                 model.reset_updatables()
-        ThemeCompound.reset_current_doc_compound()
-        if ThemeCompound.blocked_doi:
-            ThemeCompound.name_blacklist.pop(0)
-            ThemeCompound.blocked_doi = False
+        Compound.reset_current_doc_compound()
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
         #     if record.required_fulfilled:
