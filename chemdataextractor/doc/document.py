@@ -27,7 +27,7 @@ from .figure import Figure
 from .meta import MetaData
 from ..errors import ReaderError
 from ..model.base import ModelList
-from ..model.model import Compound, ThemeCompound
+from ..model.model import Compound
 from ..text import get_encoding
 from ..config import Config
 from ..parse.cem import chemical_name
@@ -246,11 +246,6 @@ class Document(BaseDocument):
                 else:
                     model.update(element_definitions)
 
-            if isinstance(el, MetaData):
-                if el.doi is not None:
-                    ThemeCompound.name_blacklist.insert(0, el.doi[-10:])
-                    ThemeCompound.blocked_doi = True
-
             el_records = el.records
             # Save the title compound
             if isinstance(el, Title):
@@ -452,10 +447,7 @@ class Document(BaseDocument):
         for el in self.elements:
             for model in el._streamlined_models:
                 model.reset_updatables()
-        ThemeCompound.reset_current_doc_compound()
-        if ThemeCompound.blocked_doi:
-            ThemeCompound.name_blacklist.pop(0)
-            ThemeCompound.blocked_doi = False
+        Compound.reset_current_doc_compound()
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
         #     if record.required_fulfilled:
