@@ -14,7 +14,9 @@ import logging
 from .base import BaseModel, StringType, ListType, ModelType, SetType
 from .units.temperature import TemperatureModel
 from .units.length import LengthModel
-from ..parse.cem import CompoundParser, CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, ThemeCompoundParser, labels_only, roles_only, chemical_name, ThemeChemicalLabelParser
+from ..parse.cem import CompoundParser, \
+    CompoundHeadingParser, ChemicalLabelParser, CompoundTableParser, names_only, ThemeCompoundParser, \
+    labels_only, roles_only, chemical_name, ThemeChemicalLabelParser, ThemeCompoundTableParser
 from ..parse.ir import IrParser
 from ..parse.mp_new import MpParser
 from ..parse.nmr import NmrParser
@@ -110,9 +112,9 @@ class Compound(BaseModel):
                     new_name_expression = new_name_expression + I(token)
                 new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
             if not cls.current_doc_compound_expressions:
-                cls.current_doc_compound_expressions = Group(new_name_expression)('compound')
+                cls.current_doc_compound_expressions = new_name_expression
             else:
-                cls.current_doc_compound_expressions = Group(new_name_expression)('compound') | cls.current_doc_compound_expressions
+                cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
         return
 
     # TODO: Resetting the updates from update_abbrev
@@ -125,21 +127,24 @@ class Compound(BaseModel):
 
 
 class ThemeCompound(Compound):
-    roles = None
+    names = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
+    labels = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
+    roles = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     blocked_doi = False
     name_blacklist = []
     label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
-    parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser()]
+    parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser(), ThemeCompoundTableParser()]
 
     @classmethod
     def update_theme_compound(cls, record):
         wt = BertWordTokenizer()
         for name in record.names:
-            name_expr = []
-            for token in wt.tokenize(name):
-                name_expr.append(W(token))
-            name_expr = Group(And(name_expr).add_action(join).add_action(fix_whitespace))('names')
-            cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | Group(name_expr)('compound')
+            tokens = wt.tokenize(name)
+            name_expr = W(tokens[0])
+            for token in tokens[1:]:
+                name_expr = name_expr + W(token)
+            name_expr = Group(name_expr).add_action(join).add_action(fix_whitespace)('names')
+            cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | name_expr
         return
 
     @classmethod
@@ -167,10 +172,9 @@ class ThemeCompound(Compound):
                     new_name_expression = new_name_expression + I(token)
                 new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
             if not cls.current_doc_compound_expressions:
-                cls.current_doc_compound_expressions = Group(new_name_expression)('compound')
+                cls.current_doc_compound_expressions = new_name_expression
             else:
-                cls.current_doc_compound_expressions = Group(new_name_expression)(
-                    'compound') | cls.current_doc_compound_expressions
+                cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
         return
 
 

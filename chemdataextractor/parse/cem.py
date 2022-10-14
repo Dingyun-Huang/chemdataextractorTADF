@@ -18,7 +18,7 @@ from lxml import etree
 from .actions import join, fix_whitespace, merge
 from .common import roman_numeral, cc, nnp, hyph, nns, nn, cd, ls, optdelim, rbrct, lbrct, sym, jj, hyphen, quote, \
     dt, delim
-from .base import BaseSentenceParser, BaseTableParser
+from .base import BaseSentenceParser, BaseTableParser, BaseParser
 from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First, And, FollowedBy
 from ..nlp.tokenize import BertWordTokenizer
 from ..text import HYPHENS, SLASHES
@@ -202,21 +202,21 @@ class CompoundParser(BaseSentenceParser):
     def root(self):
         label = self.model.labels.parse_expression('labels')
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
-        label_name_cem = (label + optdelim + chemical_name)('compound')
+        label_name_cem = (label + optdelim + (chemical_name | current_doc_compound_expressions))('compound')
 
         label_before_name = Optional(synthesis_of | to_give) + label_type + optdelim + label_name_cem + ZeroOrMore(optdelim + cc + optdelim + label_name_cem)
 
-        name_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + chemical_name + Optional(lbrct + Optional(labelled_as + optquote) + (label) + optquote + rbrct))('compound')
+        name_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + (chemical_name | current_doc_compound_expressions) + Optional(lbrct + Optional(labelled_as + optquote) + (label) + optquote + rbrct))('compound')
 
         # Very lenient name and label match, with format like "name (Compound 3)"
-        lenient_name_with_bracketed_label = (Start() + Optional(synthesis_of) + lenient_name + lbrct + label_type.hide() + label + rbrct)('compound')
+        lenient_name_with_bracketed_label = (Start() + Optional(synthesis_of) + (lenient_name | current_doc_compound_expressions) + lbrct + label_type.hide() + label + rbrct)('compound')
 
         # Chemical name with a doped label after
         # name_with_doped_label = (chemical_name + OneOrMore(delim | I('with') | I('for')) + label)('compound')
 
         # Chemical name with an informal label after
         # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
-        return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
+        return Group(name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
 
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object
@@ -282,7 +282,7 @@ class CompoundTableParser(BaseTableParser):
     def root(self):
         # is always found, our models currently rely on the compound
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
-        chem_name = (current_doc_compound_expressions | cem | chemical_label | lenient_chemical_label)
+        chem_name = (Group(current_doc_compound_expressions)('compound') | cem | chemical_label | lenient_chemical_label)
         compound_model = self.model
         labels = compound_model.labels.parse_expression('labels')
         entities = [labels]
@@ -322,11 +322,21 @@ class CompoundTableParser(BaseTableParser):
                 c.record_method = self.__class__.__name__
                 yield c
 
+
 #### Phrases for tadf theme compound ####
 
-label_type = (Optional(I('reference') | I('comparative')) + R('^(compound|dye|derivative|structure|molecule|product|formulae?|specimen)s?$', re.I))('roles').add_action(join) + Optional(colon).hide()
+label_type_t = (Optional(I('reference') | I('comparative')) +
+              R('^(compound|dye|derivative|emitter|structure|molecule|product|formulae?|specimen)s?$', re.I))('roles').add_action(join) +\
+             Optional(colon).hide()
 
-chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1 | chemical_label_phrase2 | chemical_label_phrase3)('chemical_label_phrase')
+#: Chemical label with a label type before
+chemical_label_phrase1_t = (Optional(synthesis_of) + label_type_t + Optional(lbrct) + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label)) + Optional(rbrct)
+#: Chemical label with synthesis of before
+chemical_label_phrase2_t = (synthesis_of + Optional(label_type_t) + lenient_chemical_label + ZeroOrMore((T('CC') | comma) + lenient_chemical_label))
+# Chemical label with to give/afforded etc. before, and some restriction after.
+chemical_label_phrase3_t = (to_give + Optional(dt) + Optional(label_type_t) + lenient_chemical_label + Optional(lbrct + OneOrMore(Not(rbrct) + Any()) + rbrct).hide() + (End() | I('as') | colon | comma).hide())
+
+chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1_t | chemical_label_phrase2_t | chemical_label_phrase3_t)('chemical_label_phrase')
 
 suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
           W('based') | W('substituted') | W('modified'))
@@ -334,10 +344,8 @@ suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)
 not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
 
 
-class ThemeChemicalLabelParser(BaseSentenceParser):
-    """Chemical label occurrences with no associated name."""
-    _label = None
-    _root_phrase = None
+class ThemeParser(BaseParser):
+    """root object for constructing theme compound parsers"""
 
     @property
     def label_blacklist(self):
@@ -352,6 +360,32 @@ class ThemeChemicalLabelParser(BaseSentenceParser):
         label_expression_blacklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")),
                                        Not(R("^[1-3]?3rd$"))]
         return label_expression_blacklist
+
+    @property
+    def name_blacklist(self):
+        name_expression_blacklist = [Not(I(self.model.name_blacklist[0])), Not(R('oxy$')), Not(R('yl$')), Not(R('^.$')), Not(R('ic$'))]
+        wt = BertWordTokenizer()
+        # blacklist the local cems in this sentence to enhance performance.
+        if self.local_cems:
+            for name in self.local_cems:
+                tokenized_name = wt.tokenize(name)
+                parse_ex = []
+                if name in self.model.name_blacklist:
+                    for token in tokenized_name:
+                        # also blacklist subnames in the name. Otherwise:
+                        # A/B blacklisting A/B will let B slip out blacklisting
+                        if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}',
+                                                                                           '=', '.'}:
+                            name_expression_blacklist.append(Not(W(token)))
+                        parse_ex.append(W(token))
+                    name_expression_blacklist.append(Not(And(parse_ex)))
+        return name_expression_blacklist
+
+
+class ThemeChemicalLabelParser(ThemeParser, BaseSentenceParser):
+    """Chemical label occurrences with no associated name."""
+    _label = None
+    _root_phrase = None
 
     @property
     def root(self):
@@ -369,48 +403,16 @@ class ThemeChemicalLabelParser(BaseSentenceParser):
             yield self.model(labels=[label], roles=roles)
 
 
-class ThemeCompoundParser(BaseSentenceParser):
+class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
     """Chemical name possibly with an associated label."""
     _label = None
     _root_phrase = None
     local_cems = None
 
     @property
-    def name_blacklist(self):
-        name_expression_blacklist = [Not(I(self.model.name_blacklist[0])), Not(R('oxy$')), Not(R('y$')), Not(R('".$'))]
-        wt = BertWordTokenizer()
-        # blacklist the local cems in this sentence to enhance performance.
-        if self.local_cems:
-            for name in self.local_cems:
-                tokenized_name = wt.tokenize(name)
-                parse_ex = []
-                if name in self.model.name_blacklist:
-                    for token in tokenized_name:
-                        # also blacklist subnames in the name. Otherwise:
-                        # A/B blacklisting A/B will let B slip out blacklisting
-                        if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}', '=', '.'}:
-                            name_expression_blacklist.append(Not(W(token)))
-                        parse_ex.append(W(token))
-                    name_expression_blacklist.append(Not(And(parse_ex)))
-        return name_expression_blacklist
-
-    @property
-    def label_blacklist(self):
-        label_expression_blacklist = []
-        wt = BertWordTokenizer()
-        for label in self.model.label_blacklist:
-            tokenized_label = wt.tokenize(label)
-            parse_ex = W(tokenized_label[0])
-            for token in tokenized_label[1:]:
-                parse_ex += W(token)
-            label_expression_blacklist.append(Not(parse_ex))
-        label_expression_blacklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")), Not(R("^[1-3]?3rd$"))]
-        return label_expression_blacklist
-
-    @property
     def root(self):
 
-        label = self.model.labels.parse_expression('labels')
+        label = lenient_chemical_label | self.model.labels.parse_expression('labels')
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
         """
         label_name_cem = (label + optdelim + chemical_name)('compound')
@@ -429,20 +431,19 @@ class ThemeCompoundParser(BaseSentenceParser):
         # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
-        cm_names = cm('names')
-        filtered_cm = not_prefix + Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
-        filtered_label = Every([label, Not(First(self.label_blacklist))])
-        filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
-        cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_informal_chemical_label)('compound')
+        cm_names = (current_doc_compound_expressions | cm('names'))
+        filtered_cm = Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
+        filtered_label = Every([label] + self.label_blacklist)
+        cm_with_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_label)('compound')
         cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(lbrct + Optional(labelled_as + optquote) + (filtered_label) + optquote + rbrct))('compound')
-        return Group(current_doc_compound_expressions | cm_with_informal_label | cm_with_optional_bracketed_label)('cem_phrase')
+        return Group(cm_with_label | cm_with_optional_bracketed_label)('cem_phrase')
 
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object
         # print(etree.tostring(result))
         for cem_el in result.xpath('./compound'):
             c = self.model(
-                names=cem_el.xpath('./names/text()'),
+                names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist],
                 labels=cem_el.xpath('./labels/text()'),
                 roles=['nesting theme']
             )
@@ -469,3 +470,87 @@ class ThemeCompoundParser(BaseSentenceParser):
             for result in self.root.scan(sentence.tokens):
                 for model in self.interpret(*result):
                     yield model
+
+
+class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
+    # entities = (cem | chemical_label | lenient_chemical_label) | ((I('Formula') | I('Compound')).add_action(join))('specifier')
+    # root = OneOrMore(entities + Optional(SkipTo(entities)))('root_phrase')
+
+    @property
+    def root(self):
+        # is always found, our models currently rely on the compound
+        current_doc_compound_expressions = self.model.current_doc_compound_expressions
+        cm_names = cm('names') | current_doc_compound_expressions
+        filtered_cm = not_prefix + Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
+        filtered_label = Every([(chemical_label | lenient_chemical_label), Not(First(self.label_blacklist))])
+        filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
+        cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(
+            delim | I('with') | I('for')) + filtered_informal_chemical_label)
+        cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(
+            lbrct + Optional(labelled_as + optquote) + filtered_label + optquote + rbrct))
+        chem_name = (cm_with_informal_label | cm_with_optional_bracketed_label | filtered_label)
+        compound_model = self.model
+        entities = [filtered_label]
+
+        specifier = (R('^(compound|dye|derivative|structure|molecule|material|emitter|alloy'
+                       '|product|formulae?|specimen)s?$', re.I)).add_action(join)('specifier')
+        entities.append(specifier)
+
+        # the optional, user-defined, entities of the model are added, they are tagged with the name of the field
+        for field in self.model.fields:
+            if field not in ['raw_value', 'raw_units', 'value', 'units', 'error', 'specifier']:
+                if self.model.__getattribute__(self.model, field).parse_expression is not None:
+                    entities.append(self.model.__getattribute__(self.model, field).parse_expression(field))
+
+        # the chem_name has to be parsed last in order to avoid a conflict with other elements of the model
+        entities.append(chem_name)
+
+        # logic for finding all the elements in any order
+
+        combined_entities = entities[0]
+        for entity in entities[1:]:
+            combined_entities = (combined_entities | entity)
+        root_phrase = OneOrMore(combined_entities + Optional(SkipTo(combined_entities)))('root_phrase')
+        self._root_phrase = root_phrase
+        self._specifier = self.model.specifier
+        return root_phrase
+
+    def interpret(self, result, start, end):
+        # TODO: Parse label_type into label model object
+        if result.xpath('./specifier/text()') and \
+        (result.xpath('./names/names/text()') or result.xpath('./labels/text()')):
+            c = self.model(
+                names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist],
+                labels=result.xpath('./labels/text()'),
+                roles=['nesting theme']
+            )
+            if c is not None:
+                c.record_method = self.__class__.__name__
+                yield c
+
+    def parse_cell(self, cell):
+        """
+        Parse a cell. This function is primarily called by the
+        :attr:`~chemdataextractor.doc.table.Table.records` property of
+        :class:`~chemdataextractor.doc.table.Table`.
+
+        :param list[(token,tag)] tokens: List of tokens for parsing. When this method
+            is called by :attr:`chemdataextractor.doc.text.table.Table`,
+            the tokens passed in are in the same form as
+            :attr:`chemdataextractor.doc.text.Sentence.tagged_tokens`, after the
+            category table has been flattened into a sentence.
+        :returns: All the models found in the table.
+        :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
+        """
+
+        self.local_cems = [chemical_mention.text for chemical_mention in cell.cems]
+        if self.trigger_phrase is not None:
+            trigger_phrase_results = [result for result in self.trigger_phrase.scan(cell.tokens)]
+        if (self.trigger_phrase is None or trigger_phrase_results) and self.root is not None:
+            for result in self.root.scan(cell.tokens):
+                try:
+                    for model in self.interpret(*result):
+                        yield model
+                except (AttributeError, TypeError) as e:
+                    print(e)
+                    pass
