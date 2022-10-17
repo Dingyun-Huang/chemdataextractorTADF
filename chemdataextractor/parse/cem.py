@@ -363,7 +363,7 @@ class ThemeParser(BaseParser):
 
     @property
     def name_blacklist(self):
-        name_expression_blacklist = [Not(I(self.model.name_blacklist[0])), Not(R('oxy$')), Not(R('yl$')), Not(R('^.$')), Not(R('ic$'))]
+        name_expression_blacklist = [Not(I(self.model.name_blacklist[0]))]
         wt = BertWordTokenizer()
         # blacklist the local cems in this sentence to enhance performance.
         if self.local_cems:
@@ -443,7 +443,9 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         # print(etree.tostring(result))
         for cem_el in result.xpath('./compound'):
             c = self.model(
-                names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist],
+                names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist and len(name) > 1
+                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')
+                       ],
                 labels=cem_el.xpath('./labels/text()'),
                 roles=['nesting theme']
             )
@@ -520,7 +522,8 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         if result.xpath('./specifier/text()') and \
         (result.xpath('./names/names/text()') or result.xpath('./labels/text()')):
             c = self.model(
-                names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist],
+                names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist
+                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')],
                 labels=result.xpath('./labels/text()'),
                 roles=['nesting theme']
             )
