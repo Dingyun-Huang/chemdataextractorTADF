@@ -136,9 +136,12 @@ class ThemeCompound(Compound):
     parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser(), ThemeCompoundTableParser()]
 
     @classmethod
-    def update_theme_compound(cls, record):
+    def update_theme_compound(cls, record_names):
+        """
+        record_names {iterables} -- names to be updated into current_doc_compound_expressions
+        """
         wt = BertWordTokenizer()
-        for name in record.names:
+        for name in record_names:
             tokens = wt.tokenize(name)
             name_expr = W(tokens[0])
             for token in tokens[1:]:

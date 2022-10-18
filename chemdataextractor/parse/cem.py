@@ -445,7 +445,7 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
             c = self.model(
                 names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist and len(name) > 1
                        and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')
-                       ],
+                       and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()],
                 labels=cem_el.xpath('./labels/text()'),
                 roles=['nesting theme']
             )
@@ -523,7 +523,9 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         (result.xpath('./names/names/text()') or result.xpath('./labels/text()')):
             c = self.model(
                 names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist
-                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')],
+                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')
+                       and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
+                       ],
                 labels=result.xpath('./labels/text()'),
                 roles=['nesting theme']
             )
