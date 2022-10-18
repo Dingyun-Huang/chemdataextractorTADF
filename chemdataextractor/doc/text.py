@@ -861,7 +861,7 @@ class Sentence(BaseText):
                             if found:
                                 continue
                             if isinstance(record, ThemeCompound):
-                                ThemeCompound.update_theme_compound(record)
+                                ThemeCompound.update_theme_compound(record.names)
                         elif hasattr(record, 'compound') and record.compound is not None:
                             seen_labels.update(record.compound.labels)
                         records.append(record)

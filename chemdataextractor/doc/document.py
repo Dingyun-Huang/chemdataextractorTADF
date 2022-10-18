@@ -9,6 +9,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import re
 from abc import ABCMeta, abstractproperty
 from pprint import pprint
 import collections
@@ -250,6 +251,17 @@ class Document(BaseDocument):
                 if el.doi is not None:
                     ThemeCompound.name_blacklist.insert(0, el.doi[-10:])
                     ThemeCompound.blocked_doi = True
+
+            if isinstance(el, Table):
+                h = re.compile("^(compound|dye|derivative|emitter|structure|molecule|product|formulae?|specimen)s?$", re.I)
+                for header in reversed(el.tde_table.stub_header.reshape(-1)):
+                    break
+                if h.findall(header):
+                    for names in el.tde_table.row_header:
+                        ThemeCompound.update_theme_compound(names)
+                        for name in names:
+                            if re.compile("^\d\d?[a-z]?$").findall(name):
+                                ThemeCompound.update([{'label': name}])
 
             el_records = el.records
             # Save the title compound
