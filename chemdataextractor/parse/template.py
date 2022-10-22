@@ -196,7 +196,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + Optional(I('as') | (I('to') + I('be'))).hide()
                   + Optional(I('in') + I('the') + I('range')).hide()
                   + Optional(I('as') + I('high') + I('as'))
-                  + Optional(I('ranging') + I('from')).hide()
+                  + Optional(Optional(I('ranging')) + I('from')).hide()
                   + Optional(I('of')).hide()
                   + Optional(I('rather') | I('quite')).hide()
                   + Optional(I('high') | I('low') | I('maximum') | I('minimum')).hide()

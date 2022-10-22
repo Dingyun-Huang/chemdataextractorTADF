@@ -476,6 +476,22 @@ class Paragraph(Text):
     def _repr_html_(self):
         return '<p class="cde-paragraph">' + self.text + '</p>'
 
+    @property
+    def records(self):
+        para_records = [r for sent in self.sentences for r in sent.records]
+
+        i = 0
+        length = len(para_records)
+        while i < length:
+            j = i + 1
+            while j < length:
+                if i != j:
+                    para_records[j].merge_contextual(para_records[i])
+                j += 1
+            i += 1
+
+        return ModelList(*para_records)
+
 
 class Footnote(Text):
 
@@ -1006,8 +1022,9 @@ class Subsentence(Sentence):
                                     found = True
                             if found:
                                 continue
-                            if isinstance(record, ThemeCompound):
+                            if isinstance(record, ThemeCompound) and len(record.names) > 0:
                                 ThemeCompound.update_theme_compound(record.names)
+                                ThemeCompound.update([{'label': label} for label in record.labels])
                         elif hasattr(record, 'compound') and record.compound is not None:
                             seen_labels.update(record.compound.labels)
                         records.append(record)
