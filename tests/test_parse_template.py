@@ -88,6 +88,12 @@ class TestQuantityModelTemplate(unittest.TestCase):
                                        'units': 'ElectronVolt^(1.0)', 'specifier': 'ΔEST',
                                        'compound': {'Compound': {'names': ['CZ-TTR']}}}}], result)
 
+    def test_specifier_cem_bracketed_value(self):
+        s = Sentence(
+            'Curie temperature of BiFeO3 (1100 K)')
+        expected = b'<root_phrase><specifier>Curie temperature</specifier><cem_phrase><compound><names>BiFeO3</names></compound></cem_phrase><raw_value>1100</raw_value><raw_units>K</raw_units></root_phrase>'
+        self.assertEqual(expected, self.parse(s, 'specifier_cem_bracketed_value'))
+
 
 class TestMultiQuantityTemplate(unittest.TestCase):
     maxDiff = None

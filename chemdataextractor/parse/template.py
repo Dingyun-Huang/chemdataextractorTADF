@@ -54,10 +54,9 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
         return self.model.compound.model_class.parsers[0].root
 
     @property
-    def prefix(self):
+    def prefix_only(self):
         """Specifier prefix phrase e.g. Tc equal to"""
-        return (self.specifier_phrase
-                  + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
+        return (OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
                   + Optional(I('values')).hide()
                   + Optional(delim).hide()
                   + Optional((I('varies') + I('from')) |
@@ -66,7 +65,7 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + Optional(I('recorded') | I('reported')).hide()
                   + Optional(I('of') | I('was') | I('is') | I('at') | I('near') |
                              I('above') | I('below') | I('with') | I('to') | I('were') | I('a')).hide()
-                  + Optional(I('reported') | I('determined') |
+                  + Optional(I('reported') | I('determined') | I('calculated') | I('simulated') |
                              I('estimated') | I('found') | I('occurs')).hide()
                   + Optional(I('temperatures')).hide()
                   + Optional(I('as') | (I('to') + I('be'))).hide()
@@ -96,6 +95,10 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + ZeroOrMore(lbrct | delim | rbrct).hide()).add_action(join)
 
     @property
+    def prefix(self):
+        return Group(self.specifier_phrase + self.prefix_only)
+
+    @property
     def specifier_and_value(self):
         """Specifier and value + units"""
         return Group(self.prefix + self.value_phrase)
@@ -103,25 +106,25 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def cem_before_specifier_and_value_phrase(self):
         """Phrases ordered CEM, Specifier, Value, Unit"""
-        return  (
+        return Group(
             self.cem_phrase
             + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.specifier_and_value) + Any().hide())
             + self.specifier_and_value)('root_phrase')
 
     @property
     def specifier_before_cem_and_value_phrase(self):
-        return (
+        return Group(
             self.specifier_phrase
             + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
             + self.cem_phrase
             + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
-            + Optional(self.prefix)
+            + Optional(self.prefix_only)
             + self.value_phrase)('root_phrase')
 
     @property
     def cem_after_specifier_and_value_phrase(self):
         """Phrases ordered specifier, value, unit, CEM"""
-        return (
+        return Group(
             self.specifier_and_value
             + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
             + self.cem_phrase)('root_phrase')
@@ -129,7 +132,7 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def value_specifier_cem_phrase(self):
         """Phrases ordered value unit specifier cem"""
-        return (self.value_phrase
+        return Group(self.value_phrase
             + Optional(delim | lbrct | rbrct)
             + Optional(I('which') | I('there')).hide()
             + Optional(I('likely') | I('close') |
@@ -148,9 +151,16 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
             + self.cem_phrase)('root_phrase')
 
     @property
+    def specifier_cem_bracketed_value(self):
+        """Phrases of specifier and cem followed by a bracketed value phrase"""
+        return Group(self.specifier_phrase
+                     + OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
+                     + self.cem_phrase + lbrct.hide() + self.value_phrase + Optional(rbrct.hide()))('root_phrase')
+
+    @property
     def root(self):
         """Root Phrases"""
-        root_phrase = Group(self.specifier_before_cem_and_value_phrase | self.cem_after_specifier_and_value_phrase | self.value_specifier_cem_phrase | self.cem_before_specifier_and_value_phrase | Group(self.specifier_and_value)('root_phrase'))
+        root_phrase = Group(self.specifier_before_cem_and_value_phrase | self.cem_after_specifier_and_value_phrase | self.value_specifier_cem_phrase | self.cem_before_specifier_and_value_phrase | self.specifier_cem_bracketed_value | Group(self.specifier_and_value)('root_phrase'))
         return root_phrase
 
 
@@ -190,7 +200,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + Optional(I('recorded') | I('reported')).hide()
                   + Optional(I('of') | I('was') | I('is') | I('at') | I('near') | I('are') |
                              I('above') | I('below') | I('with') | I('to') | I('were') | I('a')).hide()
-                  + Optional(I('reported') | I('determined') |
+                  + Optional(I('reported') | I('determined') | I('calculated') | I('simulated') |
                              I('estimated') | I('found') | I('occurs')).hide()
                   + Optional(I('temperatures')).hide()
                   + Optional(I('as') | (I('to') + I('be'))).hide()
@@ -698,8 +708,8 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
             try:
                 compound = cem_list[::-1][i]
                 c = self.model.compound.model_class(
-                    names=compound.xpath('./names/text()',
-                    labels=compound.xpath('./labels/text()')))
+                    names=compound.xpath('./names/text()'),
+                    labels=compound.xpath('./labels/text()'))
             except Exception:
                 requirements = False
 
