@@ -92,4 +92,5 @@ def fix_whitespaces_string(string_result):
     string_result = string_result.replace("( ", "(").replace(" )", ")")
     string_result = string_result.replace("[ ", "[").replace(" ]", "]")
     string_result = string_result.replace("′ ", "′").replace(" ′", "′")
+    string_result = string_result.replace(", ", ",").replace(" ,", ",")
     return string_result

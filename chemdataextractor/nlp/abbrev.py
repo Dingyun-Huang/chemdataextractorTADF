@@ -344,7 +344,10 @@ class TADFAbbreviationDetector(object):
                     if re.match('^\d+(\.\d+)?(g|m[lL]|cm)$', abbr_text):
                         # int or float followed by "q" or "ml" or "cm"
                         return False
-                    return True
+                elif abbr_text.isnumeric():
+                    # disallow numbers as abbreviations
+                    return False
+                return True
         return False
 
     def _get_candidates(self, sent):
