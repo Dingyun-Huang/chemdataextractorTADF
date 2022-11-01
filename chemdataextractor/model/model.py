@@ -131,7 +131,7 @@ class ThemeCompound(Compound):
     labels = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     roles = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     blocked_doi = False
-    name_blacklist = []
+    name_blacklist = ["\U0001F643"]
     label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
     parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser(), ThemeCompoundTableParser()]
 

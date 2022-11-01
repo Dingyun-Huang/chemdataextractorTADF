@@ -15,7 +15,7 @@ import logging
 import re
 from lxml import etree
 
-from .actions import join, fix_whitespace, merge
+from .actions import join, fix_whitespace, merge, fix_whitespaces_string
 from .common import roman_numeral, cc, nnp, hyph, nns, nn, cd, ls, optdelim, rbrct, lbrct, sym, jj, hyphen, quote, \
     dt, delim
 from .base import BaseSentenceParser, BaseTableParser, BaseParser
@@ -338,7 +338,7 @@ chemical_label_phrase3_t = (to_give + Optional(dt) + Optional(label_type_t) + le
 
 chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1_t | chemical_label_phrase2_t | chemical_label_phrase3_t)('chemical_label_phrase')
 
-suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
+suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R("^segments?$") | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
           W('based') | W('substituted') | W('modified'))
 
 not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
@@ -370,7 +370,7 @@ class ThemeParser(BaseParser):
             for name in self.local_cems:
                 tokenized_name = wt.tokenize(name)
                 parse_ex = []
-                if name in self.model.name_blacklist:
+                if fix_whitespaces_string(name) in self.model.name_blacklist:
                     for token in tokenized_name:
                         # also blacklist subnames in the name. Otherwise:
                         # A/B blacklisting A/B will let B slip out blacklisting
@@ -419,24 +419,18 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
 
         label_before_name = Optional(synthesis_of | to_give) + label_type + optdelim + label_name_cem + ZeroOrMore(optdelim + cc + optdelim + label_name_cem)
 
-        name_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + chemical_name + Optional(lbrct + Optional(labelled_as + optquote) + (label) + optquote + rbrct))('compound')
-
-        # Very lenient name and label match, with format like "name (Compound 3)"
-        lenient_name_with_bracketed_label = (Start() + Optional(synthesis_of) + lenient_name + lbrct + label_type.hide() + label + rbrct)('compound')
-
-        # Chemical name with a doped label after
-        # name_with_doped_label = (chemical_name + OneOrMore(delim | I('with') | I('for')) + label)('compound')
-
-        # Chemical name with an informal label after
-        # name_with_informal_label = (chemical_name + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + informal_chemical_label)('compound')
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
         cm_names = (current_doc_compound_expressions | cm('names'))
         filtered_cm = Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
         filtered_label = Every([label] + self.label_blacklist)
-        cm_with_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(delim | I('with') | I('for')) + filtered_label)('compound')
+        label_name_cem = (Optional(label_type_t) + filtered_label + optdelim + filtered_cm)('compound')
+        label_before_name = Optional(synthesis_of | to_give) + label_type_t + optdelim + label_name_cem + ZeroOrMore(
+            optdelim + cc + optdelim + label_name_cem)
+        cm_with_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(R("^[,:;\\./]$").hide() | I('with') | I('for')) + filtered_label)('compound')
         cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(lbrct + Optional(labelled_as + optquote) + (filtered_label) + optquote + rbrct))('compound')
-        return Group(cm_with_label | cm_with_optional_bracketed_label)('cem_phrase')
+        bracketed_cm_with_label = Group(lbrct + filtered_cm + R("^[,:;\\./]$").hide() + filtered_label + rbrct)('compound')
+        return Group(bracketed_cm_with_label | cm_with_label | cm_with_optional_bracketed_label | label_before_name)('cem_phrase')
 
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object
