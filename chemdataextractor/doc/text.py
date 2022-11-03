@@ -1023,9 +1023,8 @@ class Subsentence(Sentence):
                             if found:
                                 continue
                             # TODO: need to check if the following restriction for update is necessary.
-                            if isinstance(record, ThemeCompound) and len(record.names) > 0:
-                                ThemeCompound.update_theme_compound(record.names)
-                                ThemeCompound.update([{'label': label} for label in record.labels])
+                            ThemeCompound.update_theme_compound(record.names)
+                            ThemeCompound.update([{'label': label} for label in record.labels])
                         elif hasattr(record, 'compound') and record.compound is not None:
                             seen_labels.update(record.compound.labels)
                         records.append(record)
