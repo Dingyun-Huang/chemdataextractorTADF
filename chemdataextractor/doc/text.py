@@ -876,6 +876,7 @@ class Sentence(BaseText):
                                     found = True
                             if found:
                                 continue
+                            # TODO: need to check if the following restriction for update is necessary.
                             if isinstance(record, ThemeCompound) and len(record.names) > 0:
                                 ThemeCompound.update_theme_compound(record.names)
                                 ThemeCompound.update([{'label': label} for label in record.labels])
