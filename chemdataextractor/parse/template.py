@@ -400,11 +400,11 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
         e.g. curie temperatures from 100 K in MnO to 300 K in NiO
         """
         return Group(self.prefix + self.value_phrase
-                          + Optional(I('for') | I('in')).hide()
+                          + Optional(I('for') | I('in') | T('IN')).hide()
                           + self.single_cem
-                          + (Optional(I('up')) + I('to')).hide()
+                          + ((Optional(I('up')) + I('to')) | T('CC')).hide()
                           + self.value_phrase
-                          + Optional(I('in') | I('for')).hide()
+                          + Optional(I('in') | I('for') | T('IN')).hide()
                           + self.single_cem)('multi_entity_phrase_5')
 
     @property
