@@ -347,6 +347,7 @@ not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
 class ThemeParser(BaseParser):
     """root object for constructing theme compound parsers"""
 
+    local_cems = []
     @property
     def label_blacklist(self):
         label_expression_blacklist = []
@@ -366,8 +367,8 @@ class ThemeParser(BaseParser):
         name_expression_blacklist = [Not(I(self.model.name_blacklist[0]))]
         wt = BertWordTokenizer()
         # blacklist the local cems in this sentence to enhance performance.
-        if self.local_cems:
-            for name in self.local_cems:
+        if self.model.local_cems:
+            for name in self.model.local_cems:
                 tokenized_name = wt.tokenize(name)
                 parse_ex = []
                 if fix_whitespaces_string(name) in self.model.name_blacklist:
@@ -458,8 +459,7 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         :returns: All the models found in the sentence.
         :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
         """
-        # generating local blacklist
-        self.local_cems = [chemical_mention.text for chemical_mention in sentence.cems]
+
         if self.trigger_phrase is not None:
             trigger_phrase_results = [result for result in self.trigger_phrase.scan(sentence.tokens)]
         if self.trigger_phrase is None or trigger_phrase_results:
@@ -542,7 +542,6 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
         """
 
-        self.local_cems = [chemical_mention.text for chemical_mention in cell.cems]
         if self.trigger_phrase is not None:
             trigger_phrase_results = [result for result in self.trigger_phrase.scan(cell.tokens)]
         if (self.trigger_phrase is None or trigger_phrase_results) and self.root is not None:
