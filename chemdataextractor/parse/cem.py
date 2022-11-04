@@ -347,7 +347,6 @@ not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
 class ThemeParser(BaseParser):
     """root object for constructing theme compound parsers"""
 
-    local_cems = []
     @property
     def label_blacklist(self):
         label_expression_blacklist = []
@@ -408,7 +407,6 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
     """Chemical name possibly with an associated label."""
     _label = None
     _root_phrase = None
-    local_cems = None
 
     @property
     def root(self):

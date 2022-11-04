@@ -480,13 +480,13 @@ class Paragraph(Text):
     def records(self):
         para_records = [r for sent in self.sentences for r in sent.records]
 
-        i = 0
+        i = 1
         length = len(para_records)
         while i < length:
-            j = i + 1
-            while j < length:
-                if i != j:
-                    para_records[j].merge_contextual(para_records[i])
+            j = 0
+            while j + i < length:
+                para_records[j].merge_contextual(para_records[j + i])
+                para_records[j + i].merge_contextual(para_records[i])
                 j += 1
             i += 1
 
@@ -981,6 +981,7 @@ class Subsentence(Sentence):
         seen_labels = set()
         skip_parsers = self.document.skip_parsers if self.document is not None else []
 
+        ThemeCompound.local_cems = [chemical_mention.text for chemical_mention in self.cems]
         for model in self._streamlined_models:
             for parser in model.parsers:
                 if parser in skip_parsers:
@@ -1037,6 +1038,7 @@ class Subsentence(Sentence):
                     records[j].merge_all(records[i], distance=0*SentenceRange())
                 j += 1
             i += 1
+        ThemeCompound.local_cems = []
         return records
 
 
