@@ -445,13 +445,13 @@ class Paragraph(Text):
     def records(self):
         para_records = [r for sent in self.sentences for r in sent.records]
 
-        i = 0
+        i = 1
         length = len(para_records)
         while i < length:
-            j = i + 1
-            while j < length:
-                if i != j:
-                    para_records[j].merge_contextual(para_records[i])
+            j = 0
+            while j + i < length:
+                para_records[j].merge_contextual(para_records[j + i])
+                para_records[j + i].merge_contextual(para_records[i])
                 j += 1
             i += 1
 
@@ -848,6 +848,7 @@ class Sentence(BaseText):
         """All records found in the object, as a list of :class:`~chemdataextractor.model.base.BaseModel`."""
         records = ModelList()
         seen_labels = set()
+        ThemeCompound.local_cems = [chemical_mention.text for chemical_mention in self.cems]
         for model in self._streamlined_models:
             for parser in model.parsers:
                 if hasattr(parser, 'parse_sentence'):
@@ -892,6 +893,7 @@ class Sentence(BaseText):
                     records[j].merge_all(records[i])
                 j += 1
             i += 1
+        ThemeCompound.local_cems = []
         return records
 
     def __add__(self, other):
