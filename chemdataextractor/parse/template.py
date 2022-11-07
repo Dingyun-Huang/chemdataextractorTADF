@@ -51,7 +51,7 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def cem_phrase(self):
         """CEM phrases"""
-        return self.model.compound.model_class.parsers[0].root
+        return self.model.compound.model_class.parsers[0].root | Group(Group(self.model.compound.model_class.labels.parse_expression)('compound'))('cem_phrase')
 
     @property
     def prefix_only(self):
@@ -237,7 +237,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def single_cem(self):
         """Any cem"""
-        return Group(self.model.compound.model_class.current_doc_compound_expressions | cem | chemical_label | Group(chemical_name)('compound'))
+        return self.model.compound.model_class.parsers[0].root.expr | Group(self.model.compound.model_class.labels.parse_expression)('compound')
 
     @property
     def unit(self):
