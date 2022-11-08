@@ -420,8 +420,8 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
 
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
-        cm_names = (current_doc_compound_expressions | cm('names'))
-        filtered_cm = Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
+        cm_names = cm('names')
+        filtered_cm = (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) | current_doc_compound_expressions) + Not(suffix)
         filtered_label = Every([label] + self.label_blacklist)
         label_name_cem = (Optional(label_type_t) + filtered_label + optdelim + filtered_cm)('compound')
         label_before_name = Optional(synthesis_of | to_give) + label_type_t + optdelim + label_name_cem + ZeroOrMore(
@@ -474,8 +474,8 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
     def root(self):
         # is always found, our models currently rely on the compound
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
-        cm_names = cm('names') | current_doc_compound_expressions
-        filtered_cm = not_prefix + Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix)
+        cm_names = cm('names')
+        filtered_cm = (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) | current_doc_compound_expressions) + Not(suffix)
         filtered_label = Every([(chemical_label | lenient_chemical_label), Not(First(self.label_blacklist))])
         filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(

@@ -162,6 +162,7 @@ class ThemeCompound(Compound):
         for definition in cem_abbreviation_definitions:
             short_tokens = definition[0]
             long_tokens = definition[1]
+            # Blacklisted names and their abbreviations should not be added.
             if (fix_whitespaces_string(" ".join(short_tokens)) in cls.name_blacklist or
                fix_whitespaces_string(" ".join(long_tokens)) in cls.name_blacklist):
                 continue

@@ -298,10 +298,14 @@ class Document(BaseDocument):
                     break
                 if h.findall(header):
                     for names in el.tde_table.row_header:
-                        ThemeCompound.update_theme_compound(names)
+                        is_label = False
                         for name in names:
                             if re.compile("^\d\d?[a-z]?$").findall(name):
                                 ThemeCompound.update([{'label': name}])
+                                is_label = True
+                                break
+                        if not is_label:
+                            ThemeCompound.update_theme_compound(names)
 
             el_records = el.records
             # Save the title compound
