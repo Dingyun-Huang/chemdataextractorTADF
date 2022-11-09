@@ -148,7 +148,7 @@ class ThemeCompound(Compound):
             for token in tokens[1:]:
                 name_expr = name_expr + W(token)
             name_expr = Group(name_expr).add_action(join).add_action(fix_whitespace)('names')
-            cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | name_expr
+            cls.current_doc_compound_expressions = name_expr | cls.current_doc_compound_expressions
         return
 
     @classmethod
