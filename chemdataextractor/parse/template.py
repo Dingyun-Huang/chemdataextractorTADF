@@ -56,8 +56,7 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
     @property
     def prefix_only(self):
         """Specifier prefix phrase e.g. Tc equal to"""
-        return (OneOrMore(Not(self.cem_phrase | self.specifier_phrase | self.value_phrase) + Any().hide())
-                  + Optional(I('values')).hide()
+        return (Optional(I('values')).hide()
                   + Optional(delim).hide()
                   + Optional((I('varies') + I('from')) |
                              R('^increase(s|d)?') | I('falls') | I('reaches')).hide()
