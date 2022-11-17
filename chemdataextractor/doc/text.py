@@ -486,7 +486,7 @@ class Paragraph(Text):
             j = 0
             while j + i < length:
                 para_records[j].merge_contextual(para_records[j + i])
-                para_records[j + i].merge_contextual(para_records[i])
+                para_records[j + i].merge_contextual(para_records[j])
                 j += 1
             i += 1
 

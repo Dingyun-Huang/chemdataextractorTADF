@@ -350,7 +350,7 @@ class AutoSentenceParser(BaseAutoParser, BaseSentenceParser):
         chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
         try:
             compound_model = self.model.compound.model_class
-            labels = Group(compound_model.labels.parse_expression('labels'))('compound')
+            labels = compound_model.labels.parse_expression('labels')
             if compound_model.__name__ == 'ThemeCompound':
                 chem_name = compound_model.parsers[0].root.expr
         except AttributeError:
@@ -413,7 +413,7 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
         chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
         try:
             compound_model = self.model.compound.model_class
-            labels = Group(compound_model.labels.parse_expression('labels'))('compound')
+            labels = compound_model.labels.parse_expression('labels')
             if compound_model.__name__ == 'ThemeCompound':
                 chem_name = compound_model.parsers[0].root.expr
         except AttributeError:
