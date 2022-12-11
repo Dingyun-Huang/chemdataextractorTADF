@@ -346,8 +346,13 @@ class AutoSentenceParser(BaseAutoParser, BaseSentenceParser):
     @property
     def root(self):
         # is always found, our models currently rely on the compound
-        current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
-        chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
+        try:
+            current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
+            chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
+        except AttributeError:
+            # the model does not require a compound
+            chem_name = NoMatch()
+
         try:
             compound_model = self.model.compound.model_class
             labels = Group(compound_model.labels.parse_expression('labels'))('compound')
@@ -409,8 +414,13 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
     @property
     def root(self):
         # is always found, our models currently rely on the compound
-        current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
-        chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
+        try:
+            current_doc_compound_expressions = self.model.compound.model_class.current_doc_compound_expressions
+            chem_name = Group(current_doc_compound_expressions)('compound') | self.chem_name
+        except AttributeError:
+            # the model does not require a compound
+            chem_name = NoMatch()
+
         try:
             compound_model = self.model.compound.model_class
             labels = Group(compound_model.labels.parse_expression('labels'))('compound')
