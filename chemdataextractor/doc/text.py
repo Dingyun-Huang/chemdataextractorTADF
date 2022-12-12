@@ -33,7 +33,7 @@ from ..text import CONTROL_RE
 from ..utils import memoized_property, first
 from .element import BaseElement
 from ..parse.definitions import specifier_definition
-from ..parse.cem import chemical_name, cem_phrase
+from ..parse.cem import chemical_name, cem_phrase, ThemeCompoundParser
 from ..parse.quantity import construct_quantity_re
 from ..model.model import Compound, NmrSpectrum, IrSpectrum, UvvisSpectrum, MeltingPoint, GlassTransition, ThemeCompound
 from ..model.contextual_range import SentenceRange
@@ -1036,6 +1036,18 @@ class Subsentence(Sentence):
             while j < length:
                 if i != j:
                     records[j].merge_all(records[i], distance=0*SentenceRange())
+                j += 1
+            i += 1
+
+        i = 0
+        while i < len(records):
+            j = i + 1  # placing multi in front of quantity ensure the order of records
+            while j < len(records):
+                if records[j].record_method == 'QuantityModelTemplateParser' and records[i].record_method == 'MultiQuantityModelTemplateParser':
+                    if type(records[j]) == type(records[i]):
+                        if records[j].raw_value == records[i].raw_value:
+                            records.pop(j)
+                            break
                 j += 1
             i += 1
         ThemeCompound.local_cems = []

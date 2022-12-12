@@ -345,14 +345,14 @@ class Document(BaseDocument):
                     continue
                 if isinstance(record, Compound):
                     # Keep track of the most recent compound record with labels
-                    if isinstance(el, Paragraph) and record.labels:
+                    if isinstance(el, Paragraph) and record.labels.__len__() > 0:
                         last_id_record = record
                     # # Keep track of the most recent compound 'product' record
                     if record.roles and 'product' in record.roles:
                         last_product_record = record
 
                     # Heading records with compound ID's
-                    if isinstance(el, Heading) and (record.labels or record.names):
+                    if isinstance(el, Heading) and (record.labels.__len__() > 0 or record.names.__len__() > 0):
                         head_def_record = record
                         head_def_record_i = i
                         # If 2 consecutive headings with compound ID, merge in from previous
@@ -463,16 +463,16 @@ class Document(BaseDocument):
                     onames_std = {''.join(n.split()).lower() for n in other_r_names}
 
                     # Clashing labels, don't merge
-                    if (r_compound.labels is not None and
-                        other_r_compound.labels is not None and
+                    if (r_compound.labels.__len__() > 0 and
+                        other_r_compound.labels.__len__() > 0 and
                         len(r_compound.labels - other_r_compound.labels) > 0 and len(other_r_compound.labels - r_compound.labels) > 0):
                         j += 1
                         continue
 
-                    if (r_compound.labels is not None and
-                        other_r_compound.labels is not None and
-                        rnames_std is not None and
-                        onames_std is not None and
+                    if (r_compound.labels.__len__() >= 0 and
+                        other_r_compound.labels.__len__() >= 0 and
+                        rnames_std.__len__() > 0 and
+                        onames_std.__len__() > 0 and
                         (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels))):
                         r_compound.merge(other_r_compound)
                         other_r_compound.merge(r_compound)

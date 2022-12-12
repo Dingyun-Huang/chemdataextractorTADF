@@ -338,8 +338,8 @@ chemical_label_phrase3_t = (to_give + Optional(dt) + Optional(label_type_t) + le
 
 chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1_t | chemical_label_phrase2_t | chemical_label_phrase3_t)('chemical_label_phrase')
 
-suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^unit(s)$') | R('^part(s)$') | R("^segments?$") | R('^unit(s)$') | R('^group(s)$') | R('^substituent(s)$') | R('^moiet(y|(ies))$') |
-          W('based') | W('substituted') | W('modified'))
+suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^units?$') | R('^parts?$') | R("^segments?$") | R('^groups?$') | R('^substituents?$') | R('^moiet(y|(ies))$') |
+          W('based') | W('substituted') | W('modified') | W('fused') | R('^bridge(d|s)?$'))
 
 not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
 
@@ -437,7 +437,7 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         for cem_el in result.xpath('./compound'):
             c = self.model(
                 names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist and len(name) > 1
-                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')
+                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()],
                 labels=cem_el.xpath('./labels/text()'),
                 roles=['nesting theme']
@@ -515,7 +515,7 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         (result.xpath('./names/names/text()') or result.xpath('./labels/text()')):
             c = self.model(
                 names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist
-                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic')
+                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
                        ],
                 labels=result.xpath('./labels/text()'),
