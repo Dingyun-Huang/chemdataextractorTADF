@@ -313,22 +313,22 @@ class Document(BaseDocument):
                     continue
                 if isinstance(record, Compound):
                     # Keep track of the most recent compound record with labels
-                    if isinstance(el, Paragraph) and record.labels:
+                    if isinstance(el, Paragraph) and record.labels.__len__() > 0:
                         last_id_record = record
                     # # Keep track of the most recent compound 'product' record
                     if record.roles and 'product' in record.roles:
                         last_product_record = record
 
                     # Heading records with compound ID's
-                    if isinstance(el, Heading) and (record.labels or record.names):
+                    if isinstance(el, Heading) and (record.labels.__len__() > 0 or record.names.__len__() > 0):
                         head_def_record = record
                         head_def_record_i = i
                         # If 2 consecutive headings with compound ID, merge in from previous
                         if i > 0 and isinstance(self.elements[i - 1], Heading):
                             prev = self.elements[i - 1]
                             if (len(el.records) == 1 and record.is_id_only and len(prev.records) == 1 and
-                                isinstance(prev.records[0], Compound) and prev.records[0].is_id_only and not (record.labels and prev.records[0].labels) and
-                                    not (record.names and prev.records[0].names)):
+                                isinstance(prev.records[0], Compound) and prev.records[0].is_id_only and not (record.labels.__len__() > 0 and prev.records[0].labels.__len__() > 0) and
+                                    not (record.names.__len__() > 0 and prev.records[0].names.__len__() > 0)):
                                 record.names.update(prev.records[0].names)
                                 record.labels.update(prev.records[0].labels)
                                 record.roles.update(prev.records[0].roles)
@@ -425,16 +425,16 @@ class Document(BaseDocument):
                     onames_std = {''.join(n.split()).lower() for n in other_r_names}
 
                     # Clashing labels, don't merge
-                    if (r_compound.labels is not None and
-                        other_r_compound.labels is not None and
+                    if (r_compound.labels.__len__() > 0 and
+                        other_r_compound.labels.__len__() > 0 and
                         len(r_compound.labels - other_r_compound.labels) > 0 and len(other_r_compound.labels - r_compound.labels) > 0):
                         j += 1
                         continue
 
-                    if (r_compound.labels is not None and
-                        other_r_compound.labels is not None and
-                        rnames_std is not None and
-                        onames_std is not None and
+                    if (r_compound.labels.__len__() >= 0 and
+                        other_r_compound.labels.__len__() >= 0 and
+                        rnames_std.__len__() > 0 and
+                        onames_std.__len__() > 0 and
                         (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels))):
                         r_compound.merge(other_r_compound)
                         other_r_compound.merge(r_compound)
