@@ -326,7 +326,8 @@ class CompoundTableParser(BaseTableParser):
 #### Phrases for tadf theme compound ####
 
 label_type_t = (Optional(I('reference') | I('comparative')) +
-              R('^(compound|dye|derivative|emitter|structure|molecule|product|formulae?|specimen)s?$', re.I))('roles').add_action(join) +\
+              R('^(compound|dye|derivative|emitter|structure|molecule|isomer|'
+                'product|formulae?|specimen|sample|dopant|donor|acceptor|host|guest)s?$', re.I))('roles').add_action(join) +\
              Optional(colon).hide()
 
 #: Chemical label with a label type before
@@ -421,7 +422,7 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
         cm_names = cm('names')
-        filtered_cm = (current_doc_compound_expressions | Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist)) + Not(suffix)
+        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix))
         filtered_label = Every([label] + self.label_blacklist)
         label_name_cem = (Optional(label_type_t) + filtered_label + optdelim + filtered_cm)('compound')
         label_before_name = Optional(synthesis_of | to_give) + label_type_t + optdelim + label_name_cem + ZeroOrMore(
@@ -475,7 +476,7 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         # is always found, our models currently rely on the compound
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
         cm_names = cm('names')
-        filtered_cm = (current_doc_compound_expressions | Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist)) + Not(suffix)
+        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix))
         filtered_label = Every([(chemical_label | lenient_chemical_label), Not(First(self.label_blacklist))])
         filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(
@@ -487,7 +488,7 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         entities = [filtered_label]
 
         specifier = (R('^(compound|dye|derivative|structure|molecule|material|emitter|alloy'
-                       '|product|formulae?|specimen)s?$', re.I)).add_action(join)('specifier')
+                       '|product|formulae?|specimen|sample|dopant|donor|acceptor|host|guest|isomer)s?$', re.I)).add_action(join)('specifier')
         entities.append(specifier)
 
         # the optional, user-defined, entities of the model are added, they are tagged with the name of the field
