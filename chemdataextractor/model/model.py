@@ -182,6 +182,10 @@ class ThemeCompound(Compound):
                 cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
         return
 
+    @classmethod
+    def reset_ThemeCompound_labels(cls):
+        cls.labels.parse_expression = NoMatch()
+
 
 class Apparatus(BaseModel):
     name = StringType()
