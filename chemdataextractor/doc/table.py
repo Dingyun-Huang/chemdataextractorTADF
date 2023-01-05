@@ -22,7 +22,7 @@ from tabledataextractor import Table as TdeTable
 from tabledataextractor import TrivialTable as TrivialTdeTable
 from tabledataextractor.exceptions import TDEError
 from ..doc.text import Cell
-from ..model.model import Compound
+from ..model.model import Compound, ThemeCompound
 from ..model.base import ModelList, ModelType
 from ..utils import memoized_property
 from pprint import pprint
@@ -144,6 +144,7 @@ class Table(CaptionedElement):
         if hasattr(parser, 'parse_cell'):
             for cde_cell in cde_table:
                 # print(cde_cell.tagged_tokens)
+                ThemeCompound.local_cems = [chemical_mention.text for chemical_mention in cde_cell.cems]
                 log.debug(parser)
                 results = parser.parse_cell(cde_cell)
                 for result in results:
@@ -153,6 +154,7 @@ class Table(CaptionedElement):
                         result.table_row_categories = ' '.join(cde_cell.row_categories)
                         result.table_col_categories = ' '.join(cde_cell.col_categories)
                         yield result
+                ThemeCompound.local_cems = []
 
     @property
     def records(self):
