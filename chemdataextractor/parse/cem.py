@@ -519,7 +519,8 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
                        and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
                        ],
-                labels=result.xpath('./labels/text()'),
+                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
+                        and len(label) < 5],
                 roles=['nesting theme']
             )
             if c is not None:

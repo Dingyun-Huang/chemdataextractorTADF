@@ -300,7 +300,7 @@ class Document(BaseDocument):
                     for names in el.tde_table.row_header:
                         is_label = False
                         for name in names:
-                            if re.compile("^\d\d?[a-z]?$").findall(name):
+                            if re.compile("^\d\d?\d?[a-z]?$").findall(name):
                                 ThemeCompound.update([{'label': name}])
                                 is_label = True
                                 break
@@ -471,8 +471,8 @@ class Document(BaseDocument):
 
                     if (r_compound.labels.__len__() >= 0 and
                         other_r_compound.labels.__len__() >= 0 and
-                        rnames_std.__len__() > 0 and
-                        onames_std.__len__() > 0 and
+                            0 < rnames_std.__len__() < 2 and
+                            0 < onames_std.__len__() < 2 and
                         (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels))):
                         r_compound.merge(other_r_compound)
                         other_r_compound.merge(r_compound)

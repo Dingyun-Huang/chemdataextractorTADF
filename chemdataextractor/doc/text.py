@@ -1131,10 +1131,20 @@ class Cell(Sentence):
         if cell.col_categories_sents:
             tokens = tokens[:-1]
 
-        for token in tokens:
-            token.sentence = cell
+        cell = cls(" ".join([token.text for token in tokens]), document=document, **kwargs)
+        cell.data = tde_cell[0]
+        cell.row_categories = tde_cell[1]
+        cell.col_categories = tde_cell[2]
+        cell.data_sent = Sentence(cell.data)
+        cell.row_categories_sents = [Sentence(cell_text) for cell_text in cell.row_categories]
+        cell.col_categories_sents = [Sentence(cell_text) for cell_text in cell.col_categories]
+        cell.is_tde_cell = True
+        cell.document = document
 
-        cell._tokens = tokens
+        #for token in tokens:
+            #token.sentence = cell
+
+        #cell._tokens = cell.tokens
 
         return cell
 
