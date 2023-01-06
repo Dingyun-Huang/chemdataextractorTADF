@@ -293,7 +293,7 @@ class Document(BaseDocument):
 
 
             if isinstance(el, Table):
-                h = re.compile("^(compound|dye|derivative|emitter|host|guest|donor|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer)s?$", re.I)
+                h = re.compile("^(compound|dye|derivative|emitter|host|guest|donor|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer|compd|cmpd)s?$", re.I)
                 for header in reversed(el.tde_table.stub_header.reshape(-1)):
                     break
                 if h.findall(header):
