@@ -37,6 +37,7 @@ class Compound(BaseModel):
     labels = SetType(StringType(), parse_expression=NoMatch(), updatable=True)
     roles = SetType(StringType(), parse_expression=roles_only, updatable=True)
     parsers = [CompoundParser(), CompoundHeadingParser(), ChemicalLabelParser(), CompoundTableParser()]
+    current_doc_compound = set()
     current_doc_compound_expressions = NoMatch()
     # parsers = [CompoundParser(), CompoundHeadingParser(), ChemicalLabelParser()]
     # parsers = [CompoundParser()]
@@ -101,29 +102,40 @@ class Compound(BaseModel):
         log.debug("Updating Compound name abbreviations.")
         for definition in cem_abbreviation_definitions:
             short_tokens = definition[0]
-            if strict:
-                new_name_expression = W(short_tokens[0])
-                for token in short_tokens[1:]:
-                    new_name_expression = new_name_expression + W(token)
-                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
-            else:
-                new_name_expression = I(short_tokens[0])
-                for token in short_tokens[1:]:
-                    new_name_expression = new_name_expression + I(token)
-                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
-            if not cls.current_doc_compound_expressions:
-                cls.current_doc_compound_expressions = new_name_expression
-            else:
-                cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
+            cls.current_doc_compound.add(tuple(short_tokens))
+        cls.construct_ordered_current_doc_compound_expressions(strict=strict)
         return
 
     # TODO: Resetting the updates from update_abbrev
     @classmethod
     def reset_current_doc_compound(cls):
+        cls.current_doc_compound = set()
         cls.current_doc_compound_expressions = NoMatch()
 
     def construct_label_expression(self, label):
         return W(label)('labels')
+
+    @classmethod
+    def construct_ordered_current_doc_compound_expressions(cls, strict=True):
+        log.debug("Constructing current document compound expressions ordered with length.")
+        ordered_set = sorted(cls.current_doc_compound, key=lambda t: len(t), reverse=True)
+        cls.current_doc_compound_expressions = NoMatch()
+        for tokens in ordered_set:
+            if strict:
+                new_name_expression = W(tokens[0])
+                for token in tokens[1:]:
+                    new_name_expression = new_name_expression + W(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            else:
+                new_name_expression = I(tokens[0])
+                for token in tokens[1:]:
+                    new_name_expression = new_name_expression + I(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            if not cls.current_doc_compound_expressions:
+                cls.current_doc_compound_expressions = new_name_expression
+            else:
+                cls.current_doc_compound_expressions = cls.current_doc_compound_expressions | new_name_expression
+        return
 
 
 class ThemeCompound(Compound):
@@ -137,18 +149,15 @@ class ThemeCompound(Compound):
     parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser(), ThemeCompoundTableParser()]
 
     @classmethod
-    def update_theme_compound(cls, record_names):
+    def update_theme_compound(cls, record_names, strict=True):
         """
         record_names {iterables} -- names to be updated into current_doc_compound_expressions
         """
         wt = BertWordTokenizer()
         for name in record_names:
             tokens = wt.tokenize(name)
-            name_expr = W(tokens[0])
-            for token in tokens[1:]:
-                name_expr = name_expr + W(token)
-            name_expr = Group(name_expr).add_action(join).add_action(fix_whitespace)('names')
-            cls.current_doc_compound_expressions = name_expr | cls.current_doc_compound_expressions
+            cls.current_doc_compound.add(tuple(tokens))
+        cls.construct_ordered_current_doc_compound_expressions(strict=strict)
         return
 
     @classmethod
@@ -166,20 +175,8 @@ class ThemeCompound(Compound):
             if (fix_whitespaces_string(" ".join(short_tokens)) in cls.name_blacklist or
                fix_whitespaces_string(" ".join(long_tokens)) in cls.name_blacklist):
                 continue
-            if strict:
-                new_name_expression = W(short_tokens[0])
-                for token in short_tokens[1:]:
-                    new_name_expression = new_name_expression + W(token)
-                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
-            else:
-                new_name_expression = I(short_tokens[0])
-                for token in short_tokens[1:]:
-                    new_name_expression = new_name_expression + I(token)
-                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
-            if not cls.current_doc_compound_expressions:
-                cls.current_doc_compound_expressions = new_name_expression
-            else:
-                cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
+            cls.current_doc_compound.add(tuple(short_tokens))
+        cls.construct_ordered_current_doc_compound_expressions(strict=strict)
         return
 
     @classmethod
