@@ -102,8 +102,20 @@ class Compound(BaseModel):
         log.debug("Updating Compound name abbreviations.")
         for definition in cem_abbreviation_definitions:
             short_tokens = definition[0]
-            cls.current_doc_compound.add(tuple(short_tokens))
-        cls.construct_ordered_current_doc_compound_expressions(strict=strict)
+            if strict:
+                new_name_expression = W(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + W(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            else:
+                new_name_expression = I(short_tokens[0])
+                for token in short_tokens[1:]:
+                    new_name_expression = new_name_expression + I(token)
+                new_name_expression = Group(new_name_expression).add_action(join).add_action(fix_whitespace)('names')
+            if not cls.current_doc_compound_expressions:
+                cls.current_doc_compound_expressions = new_name_expression
+            else:
+                cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
         return
 
     # TODO: Resetting the updates from update_abbrev

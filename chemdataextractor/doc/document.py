@@ -551,6 +551,7 @@ class Document(BaseDocument):
                 model.reset_updatables()
         ThemeCompound.reset_current_doc_compound()
         ThemeCompound.reset_ThemeCompound_labels()
+        Compound.reset_current_doc_compound()
         if ThemeCompound.blocked_doi:
             ThemeCompound.name_blacklist.pop(0)
             ThemeCompound.blocked_doi = False
