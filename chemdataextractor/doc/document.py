@@ -293,10 +293,10 @@ class Document(BaseDocument):
 
 
             if isinstance(el, Table):
-                h = re.compile("^(compound|dye|derivative|emitter|host|guest|donor|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer|compd|cmpd)s?$", re.I)
+                h = re.compile("^(compound|dye|derivative|emitter|guest|donor|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer|Comp\.?|molecule|compd\.?|cmpd\.?)s?$", re.I)
                 for header in reversed(el.tde_table.stub_header.reshape(-1)):
                     break
-                if h.findall(header):
+                if any([h.findall(w) for w in header.split()]):
                     for names in el.tde_table.row_header:
                         is_label = False
                         for name in names:
@@ -471,19 +471,15 @@ class Document(BaseDocument):
 
                     if (r_compound.labels.__len__() >= 0 and
                         other_r_compound.labels.__len__() >= 0 and
-                            0 < rnames_std.__len__() < 2 and
-                            0 < onames_std.__len__() < 2 and
+                            0 <= rnames_std.__len__() and
+                            0 <= onames_std.__len__() and len(rnames_std.union(onames_std)) < 4 and
                         (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels))):
                         r_compound.merge(other_r_compound)
                         other_r_compound.merge(r_compound)
                         if isinstance(r, Compound) and isinstance(other_r, Compound):
-                            j_record = records.pop(j)
-                            i_record = records.pop(i)
-                            if i_record == r_compound:
-                                removed_records.append(j_record)
-                            else:
-                                removed_records.append(i_record)
-                            records.append(r_compound)
+                            records.pop(j)
+                            records.pop(i)
+                            records.insert(i, other_r_compound)
                             len_l -= 1
                             i -= 1
                         break

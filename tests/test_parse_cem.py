@@ -448,7 +448,7 @@ class TestParseDocument(unittest.TestCase):
         )
         d.models = [Compound]
         results = [r.serialize() for r in d.records]
-        self.assertEqual(results, [{'Compound': {'names': [u'hexanes']}},
+        self.assertCountEqual(results, [{'Compound': {'names': [u'hexanes']}},
                                    {'Compound': {'labels': [u'3'], 'names': [u'2-Amino-3-methoxy-5-chloropyridine'], 'roles': ['example', 'product']}}])
 
     # Edited by ti250 (8/11/2018)

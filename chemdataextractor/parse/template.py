@@ -14,7 +14,7 @@ from ..utils import first
 from ..nlp.tokenize import ChemWordTokenizer, ChemSentenceTokenizer
 from .actions import merge, join, fix_whitespace, flatten
 from .base import BaseSentenceParser
-from .elements import W, I, R, T, Optional, Any, OneOrMore, Not, ZeroOrMore, Group, End
+from .elements import W, I, R, T, Optional, Any, OneOrMore, Not, ZeroOrMore, Group, End, SkipTo
 from .auto import construct_unit_element, match_dimensions_of, value_element, BaseAutoParser, construct_category_element
 
 log = logging.getLogger(__name__)
@@ -352,7 +352,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
         """
         return Group(self.prefix
                           + self.list_of_values
-                          + Optional(I('in') | I('for'))
+                          + SkipTo(self.list_of_cems)
                           + self.list_of_cems
                           + Optional(delim + I('respectively')))('multi_entity_phrase_3')
 

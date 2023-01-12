@@ -340,7 +340,7 @@ chemical_label_phrase3_t = (to_give + Optional(dt) + Optional(label_type_t) + le
 chemical_label_phrase_t = Group(doped_chemical_label | chemical_label_phrase1_t | chemical_label_phrase2_t | chemical_label_phrase3_t)('chemical_label_phrase')
 
 suffix = Optional(T('HYPH', tag_type="pos_tag")) + (R('^units?$') | R('^parts?$') | R("^segments?$") | R('^groups?$') | R('^substituents?$') | R('^moiet(y|(ies))$') |
-          W('based') | W('substituted') | W('modified') | W('fused') | R('^bridge(d|s)?$'))
+          W('based') | W('substituted') | W('modified') | W('fused') | R('^bridge(d|s)?$') | W("et"))
 
 not_prefix = Not('based') + Any().hide() + Not('on') + Any().hide()
 
@@ -393,7 +393,7 @@ class ThemeChemicalLabelParser(ThemeParser, BaseSentenceParser):
         label = self.model.labels.parse_expression('labels')
         if self._label is label:
             return self._root_phrase
-        self._root_phrase = Every([(chemical_label_phrase_t | Group(label)('chemical_label_phrase'))] + self.label_blacklist)
+        self._root_phrase = Every([(chemical_label_phrase_t | Group(label)('chemical_label_phrase'))] + self.label_blacklist) + Not(W("wt"))
         self._label = label
         return self._root_phrase
 
@@ -444,7 +444,8 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
                 roles=['nesting theme']
             )
             c.record_method = self.__class__.__name__
-            yield c
+            if len(c.names) > 0 or len(c.labels) > 0:
+                yield c
 
     def parse_sentence(self, sentence):
         """
@@ -513,9 +514,9 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
     def interpret(self, result, start, end):
         # TODO: Parse label_type into label model object
         if result.xpath('./specifier/text()') and \
-        (result.xpath('./names/names/text()') or result.xpath('./labels/text()')):
+        (result.xpath('./names/text()') or result.xpath('./labels/text()')):
             c = self.model(
-                names=[name for name in result.xpath('./names/names/text()') if name not in self.model.name_blacklist
+                names=[name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
                        and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
                        ],
@@ -523,7 +524,7 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
                         and len(label) < 5],
                 roles=['nesting theme']
             )
-            if c is not None:
+            if c is not None and (len(c.names) > 0 or len(c.labels) > 0):
                 c.record_method = self.__class__.__name__
                 yield c
 
@@ -541,7 +542,6 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         :returns: All the models found in the table.
         :rtype: Iterator[:class:`chemdataextractor.model.base.BaseModel`]
         """
-
         if self.trigger_phrase is not None:
             trigger_phrase_results = [result for result in self.trigger_phrase.scan(cell.tokens)]
         if (self.trigger_phrase is None or trigger_phrase_results) and self.root is not None:

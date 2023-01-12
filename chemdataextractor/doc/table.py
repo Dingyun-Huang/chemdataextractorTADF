@@ -264,7 +264,7 @@ class Table(CaptionedElement):
         :param bool contextual: Whether to only merge in contextual fields or to merge in all fields.
         """
         function_name = 'merge_all'
-        if contextual:
+        if contextual or any([isinstance(r, ThemeCompound) for r in records]):
             function_name = 'merge_contextual'
         segmented_records = {}
         # A dictionary with a Model class as the key, and
