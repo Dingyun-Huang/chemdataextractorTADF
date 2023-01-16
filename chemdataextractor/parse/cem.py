@@ -438,9 +438,10 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         for cem_el in result.xpath('./compound'):
             c = self.model(
                 names=[name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist and len(name) > 1
-                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
+                       and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()],
-                labels=cem_el.xpath('./labels/text()'),
+                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
+                        and len(label) < 5],
                 roles=['nesting theme']
             )
             c.record_method = self.__class__.__name__
@@ -517,7 +518,7 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         (result.xpath('./names/text()') or result.xpath('./labels/text()')):
             c = self.model(
                 names=[name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
-                       and len(name) > 1 and not name.endswith('oxy') and not name.endswith('yl') and not name.endswith('ic') and not name.endswith('o')
+                       and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
                        ],
                 labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist

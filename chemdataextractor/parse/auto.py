@@ -462,7 +462,10 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
                     entities.append(self.model.__getattribute__(self.model, field).parse_expression(field))
 
         # the chem_name has to be parsed last in order to avoid a conflict with other elements of the model
-        entities.append(chem_name)
+        if compound_model.__name__ == 'ThemeCompound':
+            entities.insert(0, chem_name)
+        else:
+            entities.append(chem_name)
 
         # logic for finding all the elements in any order
         combined_entities = create_entities_list(entities)

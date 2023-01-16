@@ -293,7 +293,7 @@ class Document(BaseDocument):
 
 
             if isinstance(el, Table):
-                h = re.compile("^(compound|dye|derivative|emitter|guest|donor|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer|Comp\.?|molecule|compd\.?|cmpd\.?)s?$", re.I)
+                h = re.compile("^(compound|dye|derivative|emitter|guest|donor|material|name|acceptor|structure|molecule|product|formulae?|specimen|sample|dopant|isomer|Comp\.?|molecule|compd\.?|cmpd\.?)s?$", re.I)
                 for header in reversed(el.tde_table.stub_header.reshape(-1)):
                     break
                 if any([h.findall(w) for w in header.split()]):
@@ -472,7 +472,10 @@ class Document(BaseDocument):
                     if (r_compound.labels.__len__() >= 0 and
                         other_r_compound.labels.__len__() >= 0 and
                             0 <= rnames_std.__len__() and
-                            0 <= onames_std.__len__() and len(rnames_std.union(onames_std)) < 4 and
+                            0 <= onames_std.__len__() and
+                            len(rnames_std.union(onames_std)) < 4 and
+                            (all([len(rnames_std), len(r_compound.labels)]) or
+                             any([len(other_r_compound.labels), len(onames_std)])) and
                         (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels))):
                         r_compound.merge(other_r_compound)
                         other_r_compound.merge(r_compound)
