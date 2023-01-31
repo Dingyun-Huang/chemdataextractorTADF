@@ -13,7 +13,7 @@ import logging
 import re
 from lxml.etree import fromstring, tostring
 from lxml.html import fromstring as html_fromstring
-
+import six
 
 from . import BLOCK_ELEMENTS
 
@@ -53,9 +53,6 @@ class Cleaner(object):
     fix_whitespace = True
     process_xpaths = {}
     # a dictionary of string: func(el)->el or None which manipulates the text of an element
-    replace_xpaths = {}
-    # a dictionary of string: text which replaces the xpath with a string if found. Used for e.g. double or single bond
-    # glyphs.
 
     namespaces = {
         're': 'http://exslt.org/regular-expressions',
@@ -97,22 +94,6 @@ class Cleaner(object):
                         parent.text = (parent.text or '') + '\n'
                     else:
                         previous.tail = (previous.tail or '') + '\n'
-        
-        # Collect all the allowed elements
-        to_keep = [el for el in doc.xpath(self.allow_xpath, namespaces=self.namespaces)] if self.allow_xpath else []
-
-        # Process xpaths
-        if self.process_xpaths:
-            for xpath, func in self.process_xpaths.items():
-                for el in doc.xpath(xpath, namespaces=self.namespaces):
-                    parent = el.getparent()
-                    if parent is None or el in to_keep:
-                        continue
-                    new_element = func(el)
-                    if new_element is None:
-                        el.clear(keep_tail=True)
-                    else:
-                        parent.replace(el, func(el))
 
         # Remove elements that match kill_xpath
         if self.kill_xpath:
@@ -130,6 +111,9 @@ class Cleaner(object):
                         previous.tail = (previous.tail or '') + el.tail
                 parent.remove(el)
 
+        # Collect all the allowed elements
+        to_keep = [el for el in doc.xpath(self.allow_xpath, namespaces=self.namespaces)] if self.allow_xpath else []
+
         # Replace elements that match strip_xpath with their contents
         if self.strip_xpath:
             for el in doc.xpath(self.strip_xpath, namespaces=self.namespaces):
@@ -142,7 +126,7 @@ class Cleaner(object):
                 if parent is None:
                     continue
                 # Append the text to previous tail (or parent text if no previous), ensuring newline if block level
-                if el.text and isinstance(el.tag, str):
+                if el.text and isinstance(el.tag, six.string_types):
                     if previous is None:
                         parent.text = (parent.text or '') + el.text
                     else:
@@ -159,37 +143,16 @@ class Cleaner(object):
                 index = parent.index(el)
                 parent[index:index+1] = el[:]
 
-
-        for xpath, replacement_text in self.replace_xpaths.items():
+        for xpath, func in self.process_xpaths.items():
             for el in doc.xpath(xpath, namespaces=self.namespaces):
-                # This is basically a copy of the Cleaner's code for
-                # strip_xpath, we just replace it with the text we want for a double
-                # bond (=). We can extend this and incorporate it into the cleaner or something,
-                # but as we only have one glyph we want to do this for, we will keep it this way
-                # for now.
                 parent = el.getparent()
-                previous = el.getprevious()
-                # We can't strip the root element!
                 if parent is None or el in to_keep:
                     continue
-
-                # Always add the replacement text to the parent/previous's text
-                if previous is None:
-                    parent.text = (parent.text or '') + replacement_text
+                new_element = func(el)
+                if new_element is None:
+                    parent.remove(el)
                 else:
-                    previous.tail = (previous.tail or '') + replacement_text
-
-                # Append the tail to last child tail, or previous tail, or parent text, ensuring newline if block level
-                if el.tail:
-                    if len(el):
-                        last = el[-1]
-                        last.tail = (last.tail or '') + el.tail
-                    elif previous is None:
-                        parent.text = (parent.text or '') + el.tail
-                    else:
-                        previous.tail = (previous.tail or '') + el.tail
-                index = parent.index(el)
-                parent[index:index+1] = el[:]
+                    parent.replace(el, func(el))
 
         # Collapse whitespace down to a single space or a single newline
         if self.fix_whitespace:
@@ -206,14 +169,14 @@ class Cleaner(object):
     def clean_html(self, html):
         """Apply ``Cleaner`` to HTML string or document and return a cleaned string or document."""
         result_type = type(html)
-        if isinstance(html, str):
+        if isinstance(html, six.string_types):
             doc = html_fromstring(html)
         else:
             doc = copy.deepcopy(html)
         self(doc)
-        if issubclass(result_type, bytes):
+        if issubclass(result_type, six.binary_type):
             return tostring(doc, encoding='utf-8')
-        elif issubclass(result_type, str):
+        elif issubclass(result_type, six.text_type):
             return tostring(doc, encoding='unicode')
         else:
             return doc
@@ -221,14 +184,14 @@ class Cleaner(object):
     def clean_markup(self, markup, parser=None):
         """Apply ``Cleaner`` to markup string or document and return a cleaned string or document."""
         result_type = type(markup)
-        if isinstance(markup, str):
+        if isinstance(markup, six.string_types):
             doc = fromstring(markup, parser=parser)
         else:
             doc = copy.deepcopy(markup)
         self(doc)
-        if issubclass(result_type, bytes):
+        if issubclass(result_type, six.binary_type):
             return tostring(doc, encoding='utf-8')
-        elif issubclass(result_type, str):
+        elif issubclass(result_type, six.text_type):
             return tostring(doc, encoding='unicode')
         else:
             return doc

@@ -408,7 +408,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
 
     @property
     def root(self):
-        return (self.multi_entity_phrase_1 | self.multi_entity_phrase_3 | self.multi_entity_phrase_4 | self.multi_entity_phrase_5 | self.multi_entity_phrase_2)
+        return (self.multi_entity_phrase_3 | self.multi_entity_phrase_5 | self.multi_entity_phrase_4 | self.multi_entity_phrase_2 | self.multi_entity_phrase_1)
 
     def interpret(self, result, start, end):
         if result.tag == 'multi_entity_phrase_1':

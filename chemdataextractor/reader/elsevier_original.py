@@ -13,7 +13,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
-
+import six
 from ..scrape.clean import clean, Cleaner
 from ..doc.table import Cell, Table
 from ..doc.text import Caption
@@ -21,37 +21,19 @@ from ..doc.meta import MetaData
 from .markup import XmlReader
 from lxml import etree
 import re
-import copy
 
 def remove_if_reference(el):
-    if "bib" in el.get("refid"):
-        el.text = ""
-        return el
-    # text = el.text
-    # check_regex = re.compile('\[\d')
-    # if check_regex.match(text):
-    #     return None
+    text = el.text
+    check_regex = re.compile('\[\d')
+    if check_regex.match(text):
+        return None
     return el
 
 # XML stripper that removes the tags around numbers in chemical formulas
-strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup | .//ce:float-anchor',
+strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup',
                         kill_xpath='.//ce:cross-ref//ce:sup | .//ce:note-para',
-                        process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs': remove_if_reference})
-
-# strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup',
-#                         kill_xpath='.//ce:cross-ref//ce:sup | .//ce:note-para | .//ce:cross-ref | .//ce:cross-refs',
-#                         process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs': remove_if_reference})
-
-# This exists so that we strip cross-ref s after we have processed them appropriately
-# in the above cleaner, to get around the order of execution where strip_xpath is processed
-# before process_xpaths
-strip_els_xml_2 = Cleaner(
-    strip_xpath='.//ce:cross-ref | .//ce:cross-refs',
-    replace_xpaths={
-        ".//ce:glyph[@name='dbnd']": "=",
-        ".//ce:glyph[@name='sbnd']": "-",
-    }
-)
+                        process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs':
+                                        remove_if_reference})
 
 def fix_elsevier_xml_whitespace(document):
     """ Fix tricky xml tags"""
@@ -62,7 +44,7 @@ def fix_elsevier_xml_whitespace(document):
         if parent is None:
             continue
         # Append the text to previous tail (or parent text if no previous), ensuring newline if block level
-        if el.text and isinstance(el.tag, str):
+        if el.text and isinstance(el.tag, six.string_types):
             if previous is None:
                 if parent.text:
                     if parent.text.endswith(' '):
@@ -90,6 +72,7 @@ def fix_elsevier_xml_whitespace(document):
                     previous.tail = (previous.tail or '') + '' + el.tail
                 else:
                     previous.tail = (previous.tail or '') + ' ' + el.tail
+
         index = parent.index(el)
         parent[index:index + 1] = el[:]
     return document
@@ -104,51 +87,15 @@ def els_xml_whitespace(document):
         if str(el.tail).isspace():
             el.tail = ''
     # debug, check the document
-    # print(etree.tostring(document, pretty_print=True))
+    #print(etree.tostring(document, pretty_print=True))
     # sys.exit()
     return document
-
-
-def els_fix_smallcaps(document):
-    for el in document.xpath(".//ce:small-caps"):
-        # This is basically a copy of the Cleaner's code for
-        # strip_xpath, we just replace it with the caps version of the text,
-        # which is semantically closer to what we want
-        parent = el.getparent()
-        previous = el.getprevious()
-        # We can't strip the root element!
-        if parent is None:
-            continue
-        # Append the text to previous tail (or parent text if no previous), ensuring newline if block level
-        if el.text and isinstance(el.tag, six.string_types):
-            if previous is None:
-                parent.text = (parent.text or '') + el.text.upper()
-            else:
-                previous.tail = (previous.tail or '') + el.text.upper()
-        # Append the tail to last child tail, or previous tail, or parent text, ensuring newline if block level
-        if el.tail:
-            if len(el):
-                last = el[-1]
-                last.tail = (last.tail or '') + el.tail
-            elif previous is None:
-                parent.text = (parent.text or '') + el.tail
-            else:
-                previous.tail = (previous.tail or '') + el.tail
-        index = parent.index(el)
-        parent[index:index+1] = el[:]
 
 
 class ElsevierXmlReader(XmlReader):
     """Reader for Elsevier XML documents."""
 
-    cleaners = [
-        clean,
-        els_xml_whitespace,
-        fix_elsevier_xml_whitespace,
-        strip_els_xml,
-        strip_els_xml_2,
-        els_fix_smallcaps,
-    ]
+    cleaners = [clean, fix_elsevier_xml_whitespace, els_xml_whitespace, strip_els_xml]
 
     etree.FunctionNamespace("http://www.elsevier.com/xml/svapi/article/dtd").prefix = 'default'
     etree.FunctionNamespace("http://www.elsevier.com/xml/bk/dtd").prefix = 'bk'
@@ -196,7 +143,6 @@ class ElsevierXmlReader(XmlReader):
     metadata_pii_css = 'xocs|pii-unformatted'
 
 
-    # ce|cross-ref may need to return
     ignore_css = 'ce|bibliography, ce|acknowledgment, ce|correspondence, ce|author, ce|doi, ja|jid, ja|aid, ce|pii, xocs|oa-sponsor-type, xocs|open-access, default|openaccess,'\
                  'default|openaccessArticle, dc|format, dc|creator, dc|identifier,'\
                  'default|eid, default|pii, xocs|meta, xocs|ref-info, default|scopus-eid,'\
@@ -204,13 +150,11 @@ class ElsevierXmlReader(XmlReader):
                  'xocs|eid, xocs|hub-eid, xocs|normalized-first-auth-surname,' \
                  'xocs|normalized-first-auth-initial, xocs|refkeys,' \
                  'xocs|attachment-eid, xocs|attachment-type,' \
-                 'ja|jid, ce|given-name, ce|surname, ce|affiliation,' \
+                 'ja|jid, ce|given-name, ce|surname, ce|affiliation, ce|cross-refs, ce|cross-ref,' \
                  'ce|grant-sponsor, ce|grant-number, prism|copyright,' \
                  'xocs|pii-unformatted, xocs|ucs-locator, ce|copyright,' \
                  'prism|publisher, prism|*, xocs|copyright-line, xocs|cp-notice,' \
-                 'dc|description, xocs|document-subtype, ce|keywords, default|openaccessType,'\
-                 'default|openArchiveArticle, default|openaccessSponsorName, default|openaccessSponsorType, default|openaccessUserLicense, dcterms|subject,'\
-                 'ce|dochead, ce|label, default|pubType'
+                 'dc|description'
 
     url_prefix = 'https://sciencedirect.com/science/article/pii/'
 

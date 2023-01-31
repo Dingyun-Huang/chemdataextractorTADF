@@ -401,7 +401,8 @@ class ThemeChemicalLabelParser(ThemeParser, BaseSentenceParser):
         # print(etree.tostring(result))
         roles = ['nesting theme']
         for label in result.xpath('./labels/text()'):
-            yield self.model(labels=[label], roles=roles)
+            if len(label) < 5:
+                yield self.model(labels=[label], roles=roles)
 
 
 class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
@@ -423,7 +424,7 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         """
         cm_names = cm('names')
         filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix))
-        filtered_label = Every([label] + self.label_blacklist)
+        filtered_label = Every([label] + self.label_blacklist) + Not(W("wt"))
         label_name_cem = (Optional(label_type_t) + filtered_label + optdelim + filtered_cm)('compound')
         label_before_name = Optional(synthesis_of | to_give) + label_type_t + optdelim + label_name_cem + ZeroOrMore(
             optdelim + cc + optdelim + label_name_cem)
