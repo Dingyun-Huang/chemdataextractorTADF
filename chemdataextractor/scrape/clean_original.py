@@ -53,9 +53,6 @@ class Cleaner(object):
     fix_whitespace = True
     process_xpaths = {}
     # a dictionary of string: func(el)->el or None which manipulates the text of an element
-    replace_xpaths = {}
-    # a dictionary of string: text which replaces the xpath with a string if found. Used for e.g. double or single bond
-    # glyphs.
 
     namespaces = {
         're': 'http://exslt.org/regular-expressions',
@@ -156,37 +153,6 @@ class Cleaner(object):
                     parent.remove(el)
                 else:
                     parent.replace(el, func(el))
-
-        for xpath, replacement_text in self.replace_xpaths.items():
-            for el in doc.xpath(xpath, namespaces=self.namespaces):
-                # This is basically a copy of the Cleaner's code for
-                # strip_xpath, we just replace it with the text we want for a double
-                # bond (=). We can extend this and incorporate it into the cleaner or something,
-                # but as we only have one glyph we want to do this for, we will keep it this way
-                # for now.
-                parent = el.getparent()
-                previous = el.getprevious()
-                # We can't strip the root element!
-                if parent is None or el in to_keep:
-                    continue
-
-                # Always add the replacement text to the parent/previous's text
-                if previous is None:
-                    parent.text = (parent.text or '') + replacement_text
-                else:
-                    previous.tail = (previous.tail or '') + replacement_text
-
-                # Append the tail to last child tail, or previous tail, or parent text, ensuring newline if block level
-                if el.tail:
-                    if len(el):
-                        last = el[-1]
-                        last.tail = (last.tail or '') + el.tail
-                    elif previous is None:
-                        parent.text = (parent.text or '') + el.tail
-                    else:
-                        previous.tail = (previous.tail or '') + el.tail
-                index = parent.index(el)
-                parent[index:index+1] = el[:]
 
         # Collapse whitespace down to a single space or a single newline
         if self.fix_whitespace:
