@@ -469,23 +469,23 @@ class Document(BaseDocument):
                         j += 1
                         continue
 
-                    if (r_compound.labels.__len__() >= 0 and
-                        other_r_compound.labels.__len__() >= 0 and
-                            0 <= rnames_std.__len__() and
-                            0 <= onames_std.__len__() and
-                            len(rnames_std.union(onames_std)) < 4 and
-                            ((all([len(rnames_std), len(r_compound.labels)]) or
-                             all([len(other_r_compound.labels), len(onames_std)])) or
-                        (any(n in rnames_std for n in onames_std) or any(l in r_compound.labels for l in other_r_compound.labels)))):
-                        r_compound.merge(other_r_compound)
-                        other_r_compound.merge(r_compound)
-                        if isinstance(r, Compound) and isinstance(other_r, Compound):
-                            records.pop(j)
-                            records.pop(i)
-                            records.insert(i, other_r_compound)
-                            len_l -= 1
-                            i -= 1
-                        break
+                    if len(rnames_std.union(onames_std)) < 4:
+                        if (all([len(rnames_std), len(r_compound.labels)])
+                                or all([len(other_r_compound.labels), len(onames_std)])) \
+                                or all([len(rnames_std), len(onames_std)]):
+                            # if any compound has both labels and names or both have names
+                            if (any(n in rnames_std for n in onames_std) or
+                                    any(l in r_compound.labels for l in other_r_compound.labels)):
+                                # if they have common names or labels
+                                r_compound.merge(other_r_compound)
+                                other_r_compound.merge(r_compound)
+                                if isinstance(r, Compound) and isinstance(other_r, Compound):
+                                    records.pop(j)
+                                    records.pop(i)
+                                    records.insert(i, other_r_compound)
+                                    len_l -= 1
+                                    i -= 1
+                                break
                 j += 1
             i += 1
 
