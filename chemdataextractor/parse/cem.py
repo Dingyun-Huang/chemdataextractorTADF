@@ -22,6 +22,7 @@ from .base import BaseSentenceParser, BaseTableParser, BaseParser
 from .elements import I, R, W, T, ZeroOrMore, Optional, Not, Group, End, Start, OneOrMore, Any, SkipTo, Every, First, And, FollowedBy
 from ..nlp.tokenize import BertWordTokenizer
 from ..text import HYPHENS, SLASHES
+from ..utils import first
 from .cem_factory import _CemFactory
 
 log = logging.getLogger(__name__)
@@ -518,10 +519,10 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         if result.xpath('./specifier/text()') and \
         (result.xpath('./names/text()') or result.xpath('./labels/text()')):
             c = self.model(
-                names=[name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
+                names=first([name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
                        and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
-                       ],
+                       ]),
                 labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
                         and len(label) < 5],
                 roles=['nesting theme']

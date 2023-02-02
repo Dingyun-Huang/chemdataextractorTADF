@@ -483,10 +483,14 @@ class Paragraph(Text):
         i = 1
         length = len(para_records)
         while i < length:
+            # merge records with separation i
             j = 0
             while j + i < length:
-                para_records[j].merge_contextual(para_records[j + i])
-                para_records[j + i].merge_contextual(para_records[j])
+                if i == 1 and not isinstance(para_records[j], ThemeCompound):
+                    pass
+                else:
+                    para_records[j].merge_contextual(para_records[j + i])
+                    para_records[j + i].merge_contextual(para_records[j])
                 j += 1
             i += 1
 

@@ -399,7 +399,7 @@ class TADFAbbreviationDetector(object):
                 pre_index = pre_token[0][0]
                 pre_token = pre_token[0][1].text
                 # finally check is there a = ahead.
-                if pre_token == "=":
+                if pre_token == "=" or pre_token in {'is', 'being', 'was'}:
                     abbrev_tokens = []
                     for j, t2 in enumerate(reversed(tokens[:pre_index])):
                         if t2.ner_tag == 'I-CM':
