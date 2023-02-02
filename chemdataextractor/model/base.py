@@ -21,7 +21,7 @@ import six
 from ..utils import python_2_unicode_compatible
 from ..parse.elements import Any, W, I
 from ..parse.auto import AutoSentenceParser, AutoTableParser
-
+# from .model import ThemeCompound
 log = logging.getLogger(__name__)
 
 
@@ -727,6 +727,12 @@ class BaseModel(six.with_metaclass(ModelMeta)):
                         self[field_name] = other[field_name]
                         did_merge = True
         self._consolidate_binding()
+
+        if type(self).__name__ == 'ThemeCompound':
+            self.merged = did_merge if not hasattr(self, 'merged') else (did_merge or self.merged)
+        if type(other).__name__ == 'ThemeCompound':
+            other.merged = did_merge if not hasattr(other, 'merged') else (did_merge or other.merged)
+
         if did_merge:
             if should_keep_both_records:
                 did_merge = False
@@ -771,6 +777,12 @@ class BaseModel(six.with_metaclass(ModelMeta)):
                         did_merge = True
                         self[field_name] = other[field_name]
         self._consolidate_binding()
+
+        if type(self).__name__ == 'ThemeCompound':
+            self.merged = did_merge if not hasattr(self, 'merged') else (did_merge or self.merged)
+        if type(other).__name__ == 'ThemeCompound':
+            other.merged = did_merge if not hasattr(other, 'merged') else (did_merge or other.merged)
+
         if did_merge:
             if should_keep_both_records:
                 did_merge = False
