@@ -519,11 +519,12 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         # TODO: Parse label_type into label model object
         if result.xpath('./specifier/text()') and \
         (result.xpath('./names/text()') or result.xpath('./labels/text()')):
-            c = self.model(
-                names=[name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
+            names = [name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
                        and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
-                       ],
+                       ]
+            c = self.model(
+                names=names if names else [],
                 labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
                         and len(label) < 5],
                 roles=['nesting theme']

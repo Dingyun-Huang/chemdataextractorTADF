@@ -489,6 +489,7 @@ class Document(BaseDocument):
                 j += 1
             i += 1
 
+        # TODO: Skip this during TADF extraction
         # Be smarter about merging: Merge with closest records instead
         # of earlier records always having precedence
         i = 0
