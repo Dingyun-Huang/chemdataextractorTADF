@@ -451,15 +451,15 @@ class Document(BaseDocument):
                 j += 1
             i += 1
 
-        i = 1
-        length = len(records)
-        while i < length:
-            j = 0
-            while j + i < length:
-                records[j].merge_contextual(records[j + i])
-                records[j + i].merge_contextual(records[j])
-                j += 1
-            i += 1
+        # i = 1
+        # length = len(records)
+        # while i < length:
+        #     j = 0
+        #     while j + i < length:
+        #         records[j].merge_contextual(records[j + i])
+        #         records[j + i].merge_contextual(records[j])
+        #         j += 1
+        #     i += 1
 
         # print("\n\n\nAFTER:")
         # pprint(records.serialize())
