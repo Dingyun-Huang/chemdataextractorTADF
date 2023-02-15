@@ -247,9 +247,9 @@ class Table(CaptionedElement):
                 row_first[row_key] = ModelList(record)
 
         # Consolidate for each row/column
-        for _, records in six.iteritems(row_first):
-            self._consolidate(records)
         for _, records in six.iteritems(col_first):
+            self._consolidate(records)
+        for _, records in six.iteritems(row_first):
             self._consolidate(records)
 
     def _consolidate(self, records, contextual=False):
