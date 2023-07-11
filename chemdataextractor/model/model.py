@@ -118,7 +118,7 @@ class Compound(BaseModel):
                 cls.current_doc_compound_expressions = new_name_expression | cls.current_doc_compound_expressions
         return
 
-    # TODO: Resetting the updates from update_abbrev
+
     @classmethod
     def reset_current_doc_compound(cls):
         cls.current_doc_compound = set()

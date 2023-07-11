@@ -465,8 +465,8 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
         if 'compound_model' in locals():
             if compound_model.__name__ == 'ThemeCompound':
                 entities.insert(0, chem_name)
-        else:
-            entities.append(chem_name)
+            else:
+                entities.append(chem_name)
 
         # logic for finding all the elements in any order
         combined_entities = create_entities_list(entities)

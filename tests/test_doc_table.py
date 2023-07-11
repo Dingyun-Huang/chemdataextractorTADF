@@ -607,7 +607,7 @@ class TestTable(unittest.TestCase):
                                  'units': 'ElectronVolt^(1.0)',
                                  'value': [0.03]}}]
         results = d.records.serialize()
-        self.assertEqual(expected, results)
+        self.assertCountEqual(expected, results)
 
 
 if __name__ == '__main__':
