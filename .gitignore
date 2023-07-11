@@ -53,3 +53,7 @@ geckodriver.log
 log.txt
 *.sublime-project
 *.sublime-workspace
+tadf_models/debug_with_paper.py
+tadf_models/test.html
+tadf_models/test_2.html
+tadf_models/test_3.html
