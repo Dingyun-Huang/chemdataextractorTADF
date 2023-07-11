@@ -386,6 +386,7 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
     def __init__(self, chem_name=(cem | chemical_label | lenient_chemical_label)):
         super(AutoTableParser, self).__init__()
         self.chem_name = chem_name
+
     @property
     def root(self):
         # is always found, our models currently rely on the compound
@@ -440,8 +441,8 @@ class AutoTableParser(BaseAutoParser, BaseTableParser):
         if 'compound_model' in locals():
             if compound_model.__name__ == 'ThemeCompound':
                 entities.insert(0, chem_name)
-        else:
-            entities.append(chem_name)
+            else:
+                entities.append(chem_name)
 
         # logic for finding all the elements in any order
         combined_entities = create_entities_list(entities)
