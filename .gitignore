@@ -52,3 +52,7 @@ geckodriver.log
 .DS_Store
 log.txt
 chemdataextractor/nlp/allennlpwrapper.py
+tadf_models/debug_with_paper.py
+tadf_models/test.html
+tadf_models/test_2.html
+tadf_models/test_3.html
