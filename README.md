@@ -1,14 +1,40 @@
-ChemDataExtractor
+ChemDataExtractor TADF
 ==================================
 
-ChemDataExtractor v2 is a toolkit for extracting chemical information from the scientific literature. Python 3.5 to Python 3.8 supported.
+__ChemDataExtractor TADF__ is an adaption of __ChemDataExtractor__ v2, which is a toolkit for extracting chemical information from the scientific literature. The adaption was made for text-mining the thermally-activated delayed fluorescence (TADF) domain.
 
+
+Prerequisites
+------------
+
+- __git__: Install `git` for downloading the package https://git-scm.com/book/en/v2/Getting-Started-Installing-Git.
+- __conda__: Dependency manager used to create Python virtual environments https://conda.io/projects/conda/en/latest/user-guide/install/index.html.
 
 Installation
 ------------
 
-`pip install chemdataextractor2`
+Download and go to the directory of the repository.
+```
+git clone https://github.com/Dingyun-Huang/chemdataextractorTADF.git
+cd chemdataextractorTADF
+```
 
+Create and activate a new Python 3.7 environment.
+```
+conda create --name cde_tadf python=3.7
+```
+
+When you are in the repository directory, install ChemDataExtractor and tadf_models.
+```
+pip install -e .
+pip install -e tadf_models
+cde data download
+```
+
+Run all tests to ensure correct installation.
+```
+python -m pytest -W ignore::DeprecationWarning
+```
 
 Features
 --------
