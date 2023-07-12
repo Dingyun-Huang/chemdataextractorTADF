@@ -34,6 +34,7 @@ jobs:
         pip install playsound
         pip install -r requirements/development.txt
         pip install .
+        pip install -e ../tadf_models
         cde data download
     - name: Running tests
       run: |
