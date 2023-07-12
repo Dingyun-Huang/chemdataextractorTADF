@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 import logging
 import unittest
-from chemdataextractor.doc import Paragraph, Sentence, Table, Caption
+from chemdataextractor.doc import Sentence, Table, Caption
 from tadf_models.models import DelayedLifetime, TauDTableParser
 from chemdataextractor.model import ThemeCompound
 
