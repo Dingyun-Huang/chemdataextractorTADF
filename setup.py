@@ -24,7 +24,10 @@ setup(
     keywords='text-mining mining chemistry cheminformatics nlp html xml science scientific',
     zip_safe=False,
     entry_points={'console_scripts': ['cde = chemdataextractor.cli:cli']},
-    tests_require=['pytest'],
+    tests_require=[
+        'pytest', 
+        'playsound==1.3.0',
+        'unittest2==1.1.0'],
     install_requires=[
         'wheel>=0.37.0',
         'appdirs',
