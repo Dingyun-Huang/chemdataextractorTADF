@@ -24,10 +24,6 @@ setup(
     keywords='text-mining mining chemistry cheminformatics nlp html xml science scientific',
     zip_safe=False,
     entry_points={'console_scripts': ['cde = chemdataextractor.cli:cli']},
-    tests_require=[
-        'pytest', 
-        'playsound==1.3.0',
-        'unittest2==1.1.0'],
     install_requires=[
         'wheel>=0.37.0',
         'appdirs',
@@ -39,6 +35,7 @@ setup(
         'lxml',
         'nltk',
         'pdfminer.six',
+        'playsound==1.3.0',
         'python-dateutil',
         'requests==2.21.0',
         'six',
@@ -57,7 +54,8 @@ setup(
         'allennlp==0.9.0',
         'tokenizers==0.12.1',
         'scikit-learn==0.22.1',
-        'overrides==3.1.0'
+        'overrides==3.1.0',
+        'unittest2==1.1.0'
     ],
     classifiers=[
         'Intended Audience :: Developers',
