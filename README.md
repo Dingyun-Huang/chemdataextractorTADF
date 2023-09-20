@@ -40,9 +40,9 @@ Usage
 ------------
 
 An example run can be found in `example_extraction.ipynb`, where you should put the documents (Elsevier XMLs and RSC HTMLs) in the `papers_for_extraction` folder.
-The notebook does not save the extracted by default, but you can do so with `json.dumps`.
+The notebook does not save the extracted records by default, but you can do so with `json.dumps`.
 
 The helper functions for data cleaning and post-processing are given in `data_cleaning_utils.ipynb`. You can copy the functions that you would like to use into your scripts.
 
-An example of converting IUPAC names into SMILES is given in `iupac_to_smiles.ipynb`. You need to change the path of the `.jar` file to the actual path in your computer.
+An example of converting IUPAC names into SMILES is given in `iupac_to_smiles.ipynb`. You need to change the path of the `opsin_cli.jar` file to the actual path in your computer.
 
