@@ -156,8 +156,8 @@ class ThemeCompound(Compound):
     roles = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     blocked_doi = False
     local_cems = []
-    name_blacklist = ["\U0001F643"]
-    label_blacklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
+    name_blocklist = ["\U0001F643"]
+    label_blocklist = ['S1', '31G', 'S3', 'T1', '3LE', '3CT', 'V']
     parsers = [ThemeCompoundParser(), ThemeChemicalLabelParser(), ThemeCompoundTableParser()]
 
     @classmethod
@@ -174,7 +174,7 @@ class ThemeCompound(Compound):
 
     @classmethod
     def update_abbrev(cls, cem_abbreviation_definitions, strict=True):
-        """Update the Compound name abbreviation parse expression excluding blacklisted names
+        """Update the Compound name abbreviation parse expression excluding blocklisted names
 
         Arguments:
             definitions {list} -- list of abbreviation definitions found in this element
@@ -183,9 +183,9 @@ class ThemeCompound(Compound):
         for definition in cem_abbreviation_definitions:
             short_tokens = definition[0]
             long_tokens = definition[1]
-            # Blacklisted names and their abbreviations should not be added.
-            if (fix_whitespaces_string(" ".join(short_tokens)) in cls.name_blacklist or
-               fix_whitespaces_string(" ".join(long_tokens)) in cls.name_blacklist):
+            # blocklisted names and their abbreviations should not be added.
+            if (fix_whitespaces_string(" ".join(short_tokens)) in cls.name_blocklist or
+               fix_whitespaces_string(" ".join(long_tokens)) in cls.name_blocklist):
                 continue
             cls.current_doc_compound.add(tuple(short_tokens))
         cls.construct_ordered_current_doc_compound_expressions(strict=strict)

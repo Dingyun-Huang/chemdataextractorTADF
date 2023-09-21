@@ -278,7 +278,7 @@ class Document(BaseDocument):
                     
             if isinstance(el, MetaData):
                 if el.doi is not None:
-                    ThemeCompound.name_blacklist.insert(0, el.doi[-10:])
+                    ThemeCompound.name_blocklist.insert(0, el.doi[-10:])
                     ThemeCompound.blocked_doi = True
                     
             # Check any parsers that should be skipped
@@ -553,7 +553,7 @@ class Document(BaseDocument):
         ThemeCompound.reset_ThemeCompound_labels()
         Compound.reset_current_doc_compound()
         if ThemeCompound.blocked_doi:
-            ThemeCompound.name_blacklist.pop(0)
+            ThemeCompound.name_blocklist.pop(0)
             ThemeCompound.blocked_doi = False
         # Append contextual records if they've filled required fields
         # for record in contextual_records:
