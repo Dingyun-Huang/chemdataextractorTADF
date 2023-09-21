@@ -11,16 +11,16 @@ import importlib.resources
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-ThemeCompound.name_blacklist = []
-tadf_blacklist = importlib.resources.read_text(
-    'tadf_models', 'tadf_blacklist_6_more_abbrev_enriched', encoding='utf-8')
+ThemeCompound.name_blocklist = []
+tadf_blocklist = importlib.resources.read_text(
+    'tadf_models', 'tadf_blocklist_6_more_abbrev_enriched', encoding='utf-8')
 elements = importlib.resources.read_text('tadf_models', 'elements')
-tadf_blacklist = tadf_blacklist.split('\n')
+tadf_blocklist = tadf_blocklist.split('\n')
 elements = elements.split('\n')
-ThemeCompound.name_blacklist = ThemeCompound.name_blacklist + tadf_blacklist + elements
+ThemeCompound.name_blocklist = ThemeCompound.name_blocklist + tadf_blocklist + elements
 
 
-class TestBlacklist(unittest.TestCase):
+class Testblocklist(unittest.TestCase):
 
     def test_compound(self):
         """Test the the default Compound model."""
@@ -33,8 +33,8 @@ class TestBlacklist(unittest.TestCase):
             s.records.serialize()
         )
 
-    def test_blacklist(self):
-        """Test the blacklisting mechanism"""
+    def test_blocklist(self):
+        """Test the blocklisting mechanism"""
         s = Sentence(
             "Compound 1 in N2 exhibits a delayed fluorescence lifetime of 4 μs.")
         s.models = [ThemeCompound]

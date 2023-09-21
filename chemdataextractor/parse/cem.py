@@ -55,8 +55,8 @@ lenient_numeric = R('^\d{1,3}$')
 letter_number = Every([R('^(H\d)?[LSNM]{1,2}\d\d?$'), Not(bcm | icm)])
 lenient_letter_number = R('^(H\d)?[LSNM]{1,2}\d\d?$')
 
-# Blacklist to truncate chemical mentions where tags continue on incorrectly
-cm_blacklist = (W('in') | I('electrodes') | I('anodes') | I('specimen') | I('and') | W(':') + R('^m\.?p\.?$', re.I) | W(':') + Any() + R('^N\.?M\.?R\.?\(?$', re.I))
+# blocklist to truncate chemical mentions where tags continue on incorrectly
+cm_blocklist = (W('in') | I('electrodes') | I('anodes') | I('specimen') | I('and') | W(':') + R('^m\.?p\.?$', re.I) | W(':') + Any() + R('^N\.?M\.?R\.?\(?$', re.I))
 
 exclude_prefix = Start() + (lbrct + roman_numeral + rbrct + Not(hyphen) | (R('^\d{1,3}(\.\d{1,3}(\.\d{1,3}(\.\d{1,3})?)?)?$') + Not(hyphen)) | (I('stage') | I('step') | I('section') | I('part')) + (alphanumeric | numeric | roman_numeral | R('^[A-Z]$')))
 
@@ -73,12 +73,12 @@ synthesis_of = ((I('synthesis') | I('preparation') | I('production') | I('data')
 
 to_give = (I('to') + (I('give') | I('yield') | I('afford')) | I('afforded') | I('affording') | I('yielded'))('roles').add_action(join)
 
-label_blacklist = R('^(wR.*|R\d|31P|[12]H|[23]D|15N|14C|[4567890]\d+|2A)$')
+label_blocklist = R('^(wR.*|R\d|31P|[12]H|[23]D|15N|14C|[4567890]\d+|2A)$')
 
 prefixed_label = Every([R('^(cis|trans)-((d-)?(\d{1,2}[A-Za-z]{0,2}[′″‴‶‷⁗]?)(-d)?|[LS]\d\d?)$'), Not(bcm | icm)])
 
 #: Chemical label. Very permissive - must be used in context to avoid false positives.
-strict_chemical_label = Not(label_blacklist) + (alphanumeric | roman_numeral | letter_number | prefixed_label)('labels')
+strict_chemical_label = Not(label_blocklist) + (alphanumeric | roman_numeral | letter_number | prefixed_label)('labels')
 
 lenient_chemical_label = numeric('labels') | Every([R('^([A-Z]\d{1,3})$'), Not(bcm | icm)])('labels') | strict_chemical_label
 
@@ -292,8 +292,8 @@ other_solvent = (
 
 solvent_name_options = (nmr_solvent | solvent_formula | other_solvent)
 solvent_name = (Optional(include_prefix) + solvent_name_options)('names').add_action(join).add_action(fix_whitespace)
-chemical_name_blacklist = (I('mmc'))
-proper_chemical_name_options = Group(Not(chemical_name_blacklist) + (
+chemical_name_blocklist = (I('mmc'))
+proper_chemical_name_options = Group(Not(chemical_name_blocklist) + (
     formula ^ cm ^ element_name ^ element_symbol ^ registry_number ^ amino_acid ^ amino_acid_name
 ))
 
@@ -536,38 +536,38 @@ class ThemeParser(BaseParser):
     """root object for constructing theme compound parsers"""
 
     @property
-    def label_blacklist(self):
-        label_expression_blacklist = []
+    def label_blocklist(self):
+        label_expression_blocklist = []
         wt = BertWordTokenizer()
-        for label in self.model.label_blacklist:
+        for label in self.model.label_blocklist:
             tokenized_label = wt.tokenize(label)
             parse_ex = W(tokenized_label[0])
             for token in tokenized_label[1:]:
                 parse_ex += W(token)
-            label_expression_blacklist.append(Not(parse_ex))
-        label_expression_blacklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")),
+            label_expression_blocklist.append(Not(parse_ex))
+        label_expression_blocklist += [Not(R("^[1-3]?[4-9]th$")), Not(R("^[1-3]?1st$")), Not(R("^[1-3]?2nd$")),
                                        Not(R("^[1-3]?3rd$"))]
-        return label_expression_blacklist
+        return label_expression_blocklist
 
     @property
-    def name_blacklist(self):
-        name_expression_blacklist = [Not(I(self.model.name_blacklist[0]))]
+    def name_blocklist(self):
+        name_expression_blocklist = [Not(I(self.model.name_blocklist[0]))]
         wt = BertWordTokenizer()
-        # blacklist the local cems in this sentence to enhance performance.
+        # blocklist the local cems in this sentence to enhance performance.
         if self.model.local_cems:
             for name in self.model.local_cems:
                 tokenized_name = wt.tokenize(name)
                 parse_ex = []
-                if fix_whitespaces_string(name) in self.model.name_blacklist:
+                if fix_whitespaces_string(name) in self.model.name_blocklist:
                     for token in tokenized_name:
-                        # also blacklist subnames in the name. Otherwise:
-                        # A/B blacklisting A/B will let B slip out blacklisting
+                        # also blocklist subnames in the name. Otherwise:
+                        # A/B blocklisting A/B will let B slip out blocklisting
                         if token not in HYPHENS and token not in SLASHES and token not in {'(', '[', '{', ')', ']', '}',
                                                                                            '=', '.'}:
-                            name_expression_blacklist.append(Not(W(token)))
+                            name_expression_blocklist.append(Not(W(token)))
                         parse_ex.append(W(token))
-                    name_expression_blacklist.append(Not(And(parse_ex)))
-        return name_expression_blacklist
+                    name_expression_blocklist.append(Not(And(parse_ex)))
+        return name_expression_blocklist
 
 
 class ThemeChemicalLabelParser(ThemeParser, BaseSentenceParser):
@@ -580,7 +580,7 @@ class ThemeChemicalLabelParser(ThemeParser, BaseSentenceParser):
         label = self.model.labels.parse_expression('labels')
         if self._label is label:
             return self._root_phrase
-        self._root_phrase = Every([(chemical_label_phrase_t | Group(label)('chemical_label_phrase'))] + self.label_blacklist) + Not(W("wt"))
+        self._root_phrase = Every([(chemical_label_phrase_t | Group(label)('chemical_label_phrase'))] + self.label_blocklist) + Not(W("wt"))
         self._label = label
         return self._root_phrase
 
@@ -610,8 +610,8 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         return Group(current_doc_compound_expressions | name_with_informal_label | name_with_doped_label | lenient_name_with_bracketed_label | label_before_name | name_with_comma_within | name_with_optional_bracketed_label)('cem_phrase')
         """
         cm_names = cm('names')
-        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix))
-        filtered_label = Every([label] + self.label_blacklist) + Not(W("wt"))
+        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blocklist) + Not(suffix))
+        filtered_label = Every([label] + self.label_blocklist) + Not(W("wt"))
         label_name_cem = (Optional(label_type_t) + filtered_label + optdelim + filtered_cm)('compound')
         label_before_name = Optional(synthesis_of | to_give) + label_type_t + optdelim + label_name_cem + ZeroOrMore(
             optdelim + cc + optdelim + label_name_cem)
@@ -624,12 +624,12 @@ class ThemeCompoundParser(ThemeParser, BaseSentenceParser):
         # TODO: Parse label_type into label model object
         # print(etree.tostring(result))
         for cem_el in result.xpath('./compound'):
-            names = first([name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blacklist and len(name) > 1
+            names = first([name for name in cem_el.xpath('./names/text()') if name not in self.model.name_blocklist and len(name) > 1
                        and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{", "-"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()])
             c = self.model(
                 names=[names] if names else [],
-                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
+                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blocklist
                         and len(label) < 5],
                 roles=['nesting theme']
             )
@@ -667,9 +667,9 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         # is always found, our models currently rely on the compound
         current_doc_compound_expressions = self.model.current_doc_compound_expressions
         cm_names = cm('names')
-        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blacklist) + Not(suffix))
-        filtered_label = Every([(chemical_label | lenient_chemical_label), Not(First(self.label_blacklist))])
-        filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blacklist)
+        filtered_cm = current_doc_compound_expressions | (Every([cm_names.add_action(fix_whitespace)] + self.name_blocklist) + Not(suffix))
+        filtered_label = Every([(chemical_label | lenient_chemical_label), Not(First(self.label_blocklist))])
+        filtered_informal_chemical_label = Every([informal_chemical_label] + self.label_blocklist)
         cm_with_informal_label = Group(filtered_cm + Optional(R('compounds?')) + OneOrMore(
             delim | I('with') | I('for')) + filtered_informal_chemical_label)
         cm_with_optional_bracketed_label = (Optional(synthesis_of | to_give) + filtered_cm + Optional(
@@ -705,13 +705,13 @@ class ThemeCompoundTableParser(BaseTableParser, ThemeParser):
         # TODO: Parse label_type into label model object
         if result.xpath('./specifier/text()') and \
         (result.xpath('./names/text()') or result.xpath('./labels/text()')):
-            names = first([name for name in result.xpath('./names/text()') if name not in self.model.name_blacklist
+            names = first([name for name in result.xpath('./names/text()') if name not in self.model.name_blocklist
                        and len(name) > 1 and not any([name.endswith(g) for g in {"oxy", "yl", "ic", "o", "(", "[", "{"}])
                        and not name.isnumeric() and not re.compile("^\d\d?[a-z]$").findall(name) and not 'tadf' in name.lower()
                        ])
             c = self.model(
                 names=[names] if names else [],
-                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blacklist
+                labels=[label for label in result.xpath('./labels/text()') if label not in self.model.label_blocklist
                         and len(label) < 5],
                 roles=['nesting theme']
             )
