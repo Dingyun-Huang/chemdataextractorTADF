@@ -49,7 +49,7 @@ An example of converting IUPAC names into SMILES is given in `iupac_to_smiles.ip
 Citing
 ------------
 
-If you use the database **chemdataextractor** in your work, please cite the following works:
+If you use the database or **chemdataextractorTADF** in your work, please cite the following works:
 
 Huang, D. & Cole, J. M. A Database of Thermally Activated Delayed Fluorescent Molecules Auto-generated from Scientific Literature with ChemDataExtractor. (2023) https://doi.org/10.6084/m9.figshare.24004182.
 
