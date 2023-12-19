@@ -46,3 +46,16 @@ The helper functions for data cleaning and post-processing are given in `data_cl
 
 An example of converting IUPAC names into SMILES is given in `iupac_to_smiles.ipynb`. You need to change the path of the `opsin_cli.jar` file to the actual path in your computer.
 
+Citing
+------------
+
+If you use the database **chemdataextractor** in your work, please cite the following works:
+
+Huang, D. & Cole, J. M. A Database of Thermally Activated Delayed Fluorescent Molecules Auto-generated from Scientific Literature with ChemDataExtractor. (2023) https://doi.org/10.6084/m9.figshare.24004182.
+
+Mavračić, J., Court, C. J., Isazawa, T., Elliott, S. R. & Cole, J. M. ChemDataExtractor 2.0: Autopopulated Ontologies for Materials Science. J. Chem. Inf. Model. 61, 4280–4289 (2021). https://doi.org/acs.jcim.1c00446
+
+Funding
+------------
+
+This project was financially supported by the [Science and Technology Facilities Council (STFC)](https://stfc.ukri.org/) and the [Royal Academy of Engineering](https://www.raeng.org.uk/) (RCSRF1819\7\10). Dingyun Huang recieves his PhD scholarship from the Cambridge Commonwealth, European and International Trust and the China Scholarship Council for a PhD scholarship.
