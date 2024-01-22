@@ -52,6 +52,8 @@ Citing
 
 If you use the database or **chemdataextractorTADF** in your work, please cite the following works:
 
+Huang, D., Cole, J.M. A database of thermally activated delayed fluorescent molecules auto-generated from scientific literature with ChemDataExtractor. Sci Data 11, 80 (2024). https://doi.org/10.1038/s41597-023-02897-3
+
 Huang, D. & Cole, J. M. A Database of Thermally Activated Delayed Fluorescent Molecules Auto-generated from Scientific Literature with ChemDataExtractor. (2023) https://doi.org/10.6084/m9.figshare.24004182.
 
 Mavračić, J., Court, C. J., Isazawa, T., Elliott, S. R. & Cole, J. M. ChemDataExtractor 2.0: Autopopulated Ontologies for Materials Science. J. Chem. Inf. Model. 61, 4280–4289 (2021). https://doi.org/acs.jcim.1c00446
