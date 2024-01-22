@@ -22,6 +22,7 @@ cd chemdataextractorTADF
 Create and activate a new Python 3.7 environment.
 ```
 conda create --name cde_tadf python=3.7
+conda activate cde_tadf
 ```
 
 When you are in the repository directory, install ChemDataExtractor and tadf_models.
