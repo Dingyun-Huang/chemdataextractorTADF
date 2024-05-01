@@ -53,9 +53,6 @@ class Cleaner(object):
     fix_whitespace = True
     process_xpaths = {}
     # a dictionary of string: func(el)->el or None which manipulates the text of an element
-    replace_xpaths = {}
-    # a dictionary of string: text which replaces the xpath with a string if found. Used for e.g. double or single bond
-    # glyphs.
 
     namespaces = {
         're': 'http://exslt.org/regular-expressions',
