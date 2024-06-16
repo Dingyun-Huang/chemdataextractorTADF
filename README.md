@@ -3,7 +3,6 @@ ChemDataExtractor TADF
 
 __ChemDataExtractor TADF__ is an adaption of __ChemDataExtractor__ v2, which is a toolkit for extracting chemical information from the scientific literature. The adaption was made for text-mining the thermally-activated delayed fluorescence (TADF) domain.
 
-
 Prerequisites
 ------------
 
@@ -12,6 +11,8 @@ Prerequisites
 
 Installation
 ------------
+
+### Link to BiliBili video How to Install CDE from scratch [here](https://www.bilibili.com/video/BV18TV8eoEuK/?share_source=copy_web&vd_source=f28b2a599b5466304d1f1ed147937fe8).
 
 Download and go to the directory of the repository.
 ```
