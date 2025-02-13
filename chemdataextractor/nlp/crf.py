@@ -7,7 +7,7 @@ from typing import List, Tuple, Dict, Union
 import torch
 
 from chemdataextractor.errors import ConfigurationError
-import chemdataextractor.nlp.util as util
+from chemdataextractor.nlp import util as util
 
 VITERBI_DECODING = Tuple[List[int], float]  # a list of tags, and a viterbi score
 
