@@ -604,3 +604,13 @@ class DictionaryTagger(BaseTagger):
             tags[start_token+1:end_token+1] = ['I-%s' % self.entity] * (end_token - start_token)
         tokentags = list(zip(tokens, tags))
         return tokentags
+
+
+class HFTagger(BaseTagger):
+    """Tagger that uses the Hugging Face Transformers library."""
+    tag_type = "hf_ner_tag" 
+    def tag(self, tokens):
+        from transformers import AutoTokenizer, AutoModel
+        scibert_tokenizer = AutoTokenizer.from_pretrained("allenai/scibert_scivocab_cased")
+        input_ids = scibert_tokenizer.convert_tokens_to_ids([token.text for token in tokens])
+        return list(zip(tokens, tags))
