@@ -9,6 +9,7 @@ from chemdataextractor.nlp.allennlp_modules import TimeDistributed
 from chemdataextractor.errors import ConfigurationError
 from typing import Dict, Optional, List, Tuple
 from chemdataextractor.doc import Sentence
+from chemdataextractor.data import find_data
 
 
 class BertCrfConfig(PretrainedConfig):
@@ -110,18 +111,22 @@ class BertCrfTagger(PreTrainedModel):
 
 def main():
     # Load the model
-    tagger = BertCrfTagger.from_pretrained("C:/Users/jack_/Desktop/cde_models/hf_bert_crf_tagger")
-    tokenizer = AutoTokenizer.from_pretrained("C:/Users/jack_/Desktop/cde_models/hf_bert_crf_tagger")
+    tagger = BertCrfTagger.from_pretrained(find_data("models/hf_bert_crf_tagger"))
+    tokenizer = AutoTokenizer.from_pretrained(find_data("models/hf_bert_crf_tagger"))
     s = "The chemical formula of water is H2O."
     cde_s = Sentence(s)
     cde_tagged_tokens = cde_s.ner_tagged_tokens
     
-    _inputs = tokenizer(s)
-    print(_inputs)
+    _inputs = tokenizer(s, return_offsets_mapping=True, truncation=False)
+    # print(_inputs)
     tagger.eval()
     with torch.no_grad():
         output = tagger(torch.tensor([_inputs["input_ids"]]), torch.tensor([_inputs["attention_mask"]]))
         hf_tagger_results = tagger.decode(output)
+    
+    print(cde_tagged_tokens)
+    print(list(zip(tokenizer.convert_ids_to_tokens(_inputs["input_ids"]), hf_tagger_results["tags"][0])))
+
     
 if __name__ == "__main__":
     main()
