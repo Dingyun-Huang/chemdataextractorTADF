@@ -1,6 +1,9 @@
 name: CDE tests
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   python_tests:
