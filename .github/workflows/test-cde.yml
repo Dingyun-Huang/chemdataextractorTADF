@@ -4,10 +4,10 @@ on: [push]
 
 jobs:
   python_tests:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.6', '3.8' ]
+        python-version: [ '3.6', '3.7' ]
     name: Test on Python ${{ matrix.python-version }}
     steps:
     - uses: actions/checkout@v2
