@@ -164,8 +164,11 @@ class _BertCrfTagger(Model):
         loss : ``torch.FloatTensor``, optional
             A scalar loss to be optimised. Only computed if gold label ``tags`` are provided.
         """
+        print("tokens:", tokens)
         embedded_text_input = self.text_field_embedder(tokens)
+        print("embedded_text_input:", embedded_text_input, '\nof shape:', embedded_text_input.shape)
         mask = util.get_text_field_mask(tokens)
+        print("mask:", mask)
 
         embedded_text_input = self.dropout(embedded_text_input)
 
