@@ -119,14 +119,20 @@ def main():
     cde_tagged_tokens = cde_s.ner_tagged_tokens
     
     _inputs = tokenizer.encode(s)  # tokenizer(s, return_offsets_mapping=True, truncation=False)
-    print(_inputs)
+    print(_inputs.tokens)
+    print(_inputs.ids)
+    print(_inputs.offsets)
+    print(_inputs.attention_mask)
+    print(_inputs.word_ids)
+    
+    print("tokenizer output:\n", _inputs)
     tagger.eval()
     with torch.no_grad():
-        output = tagger(torch.tensor([_inputs["input_ids"]]), torch.tensor([_inputs["attention_mask"]]))
+        output = tagger(_inputs.ids, _inputs.attention_mask)
         hf_tagger_results = tagger.decode(output)
     
     print(cde_tagged_tokens)
-    print(list(zip(tokenizer.convert_ids_to_tokens(_inputs["input_ids"]), hf_tagger_results["tags"][0])))
+    print(list(zip(tokenizer.decode(_inputs["input_ids"]), hf_tagger_results["tags"][0])))
 
     
 if __name__ == "__main__":
