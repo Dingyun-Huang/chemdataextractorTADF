@@ -10,7 +10,7 @@ from chemdataextractor.errors import ConfigurationError
 from typing import Dict, Optional, List, Tuple
 from chemdataextractor.doc import Sentence
 from chemdataextractor.data import find_data
-
+from chemdataextractor.nlp.util import combine_initial_dims, uncombine_initial_dims, get_device_of, get_range_vector
 
 class BertCrfConfig(PretrainedConfig):
     model_type = 'bert'
@@ -80,19 +80,44 @@ class BertCrfTagger(PreTrainedModel):
     def _label_to_index(self):
         return {label: index for index, label in self.index_and_label}
 
-    def forward(self, input_ids, attention_mask, labels=None):
+    def forward(self, input_ids, offsets, crf_mask, token_type_ids=None, labels=None):
         # BERT embeddings
-        outputs = self.bert_model(input_ids=input_ids, attention_mask=attention_mask)
-        sequence_output = outputs.last_hidden_state
-        sequence_output = self.dropout(sequence_output)
+        print(input_ids.size())
         
+        if token_type_ids is None:
+            token_type_ids = torch.zeros_like(input_ids)
+
+        input_mask = (input_ids != 0).long()
+
+        # input_ids may have extra dimensions, so we reshape down to 2-d
+        # before calling the BERT model and then reshape back at the end.
+        outputs = self.bert_model(input_ids=combine_initial_dims(input_ids),
+                                                token_type_ids=combine_initial_dims(token_type_ids),
+                                                attention_mask=combine_initial_dims(input_mask))
+        # all_encoder_layers = torch.stack(outputs.last_hidden_state)
+        last_hidden_state = outputs.last_hidden_state
+
+        # At this point, mix is (batch_size * d1 * ... * dn, sequence_length, embedding_dim)
+        # offsets is (batch_size, d1, ..., dn, orig_sequence_length)
+        offsets2d = combine_initial_dims(offsets)
+        # now offsets is (batch_size * d1 * ... * dn, orig_sequence_length)
+        range_vector = get_range_vector(offsets2d.size(0),
+                                                device=get_device_of(last_hidden_state)).unsqueeze(1)
+        # selected embeddings is also (batch_size * d1 * ... * dn, orig_sequence_length)
+        selected_embeddings = last_hidden_state[range_vector, offsets2d]
+
+        output_embeddings =  uncombine_initial_dims(selected_embeddings, offsets.size())
+
+        # TODO: Sperate the function into two parts: one for the BERT embeddings and the other for the CRF
+        sequence_output = self.dropout(output_embeddings)
+        print(sequence_output.size())
         # Project onto tag space
         logits = self.tag_projection_layer(sequence_output)
-        best_paths = self.crf.viterbi_tags(logits, attention_mask)
+        best_paths = self.crf.viterbi_tags(logits, crf_mask)
 
         predicted_tags = [x for x, y in best_paths]
 
-        output = {"logits": logits, "mask": attention_mask, "tags": predicted_tags}
+        output = {"logits": logits, "mask": crf_mask, "tags": predicted_tags}
         
         return output
 
@@ -111,28 +136,53 @@ class BertCrfTagger(PreTrainedModel):
 
 def main():
     # Load the model
-    from tokenizers import BertWordPieceTokenizer
     tagger = BertCrfTagger.from_pretrained(find_data("models/hf_bert_crf_tagger"))
-    tokenizer = BertWordPieceTokenizer(vocab=find_data("models/hf_bert_crf_tagger") + '/vocab.txt',) # AutoTokenizer.from_pretrained(find_data("models/hf_bert_crf_tagger"))
+    wordpiece_tokenizer = AutoTokenizer.from_pretrained(find_data("models/hf_bert_crf_tagger"))
     s = "The chemical formula of water is H2O."
     cde_s = Sentence(s)
-    cde_tagged_tokens = cde_s.ner_tagged_tokens
+    tokens = cde_s.tokens
+    # cde_tagged_tokens = cde_s.ner_tagged_tokens
     
-    _inputs = tokenizer.encode(s)  # tokenizer(s, return_offsets_mapping=True, truncation=False)
-    print(_inputs.tokens)
-    print(_inputs.ids)
-    print(_inputs.offsets)
-    print(_inputs.attention_mask)
-    print(_inputs.word_ids)
+    text = (token.text
+                # if self._do_lowercase and token.text not in self._never_lowercase
+                # else token.text
+                for token in tokens)
+    token_wordpiece_ids = [[wordpiece_tokenizer.convert_tokens_to_ids(wordpiece) for wordpiece in wordpiece_tokenizer.tokenize(token)]
+                               for token in text]
     
-    print("tokenizer output:\n", _inputs)
+    offsets = []
+
+    # If we're using initial offsets, we want to start at offset = len(text_tokens)
+    # so that the first offset is the index of the first wordpiece of tokens[0].
+    # Otherwise, we want to start at len(text_tokens) - 1, so that the "previous"
+    # offset is the last wordpiece of "tokens[-1]".
+    offset = 1 # len(self._start_piece_ids) - 1
+
+    # Count amount of wordpieces accumulated
+    pieces_accumulated = 0
+    for token in token_wordpiece_ids:
+
+        # For initial offsets, the current value of ``offset`` is the start of
+        # the current wordpiece, so add it to ``offsets`` and then increment it.
+        offsets.append(offset)
+        offset += len(token)
+
+        pieces_accumulated += len(token)
+    
+    flat_token_wordpiece_ids = [wordpiece_id for token in token_wordpiece_ids for wordpiece_id in token]
+    wordpiece_ids = [wordpiece_tokenizer.cls_token_id] + flat_token_wordpiece_ids + [wordpiece_tokenizer.sep_token_id]
+    mask = [1 for _ in offsets]
+    
+    print("my indexer output:\n", wordpiece_ids)
+    print("my offsets:\n", offsets)
+    print("my mask:\n", mask)
     tagger.eval()
     with torch.no_grad():
-        output = tagger(_inputs.ids, _inputs.attention_mask)
+        output = tagger(torch.LongTensor([wordpiece_ids]), torch.LongTensor([offsets]), torch.LongTensor([mask]))
         hf_tagger_results = tagger.decode(output)
     
-    print(cde_tagged_tokens)
-    print(list(zip(tokenizer.decode(_inputs["input_ids"]), hf_tagger_results["tags"][0])))
+    # print(cde_tagged_tokens)
+    print(list(zip(tokens, hf_tagger_results["tags"][0])))
 
     
 if __name__ == "__main__":

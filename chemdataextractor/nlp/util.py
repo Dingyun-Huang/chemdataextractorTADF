@@ -6,6 +6,55 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def get_device_of(tensor: torch.Tensor) -> int:
+    """
+    Returns the device of the tensor.
+    """
+    if not tensor.is_cuda:
+        return -1
+    else:
+        return tensor.get_device()
+
+def get_range_vector(size: int, device: int) -> torch.Tensor:
+    """
+    Returns a range vector with the desired size, starting at 0. The CUDA implementation
+    is meant to avoid copy data from CPU to GPU.
+    """
+    if device > -1:
+        return torch.LongTensor(size, device=device).fill_(1).cumsum(0) - 1
+    else:
+        return torch.arange(0, size, dtype=torch.long)
+
+def combine_initial_dims(tensor: torch.Tensor) -> torch.Tensor:
+    """
+    Given a (possibly higher order) tensor of ids with shape
+    (d1, ..., dn, sequence_length)
+    Return a view that's (d1 * ... * dn, sequence_length).
+    If original tensor is 1-d or 2-d, return it as is.
+    """
+    if tensor.dim() <= 2:
+        return tensor
+    else:
+        return tensor.view(-1, tensor.size(-1))
+
+
+def uncombine_initial_dims(tensor: torch.Tensor, original_size: torch.Size) -> torch.Tensor:
+    """
+    Given a tensor of embeddings with shape
+    (d1 * ... * dn, sequence_length, embedding_dim)
+    and the original shape
+    (d1, ..., dn, sequence_length),
+    return the reshaped tensor of embeddings with shape
+    (d1, ..., dn, sequence_length, embedding_dim).
+    If original size is 1-d or 2-d, return it as is.
+    """
+    if len(original_size) <= 2:
+        return tensor
+    else:
+        view_args = list(original_size) + [tensor.size(-1)]
+        return tensor.view(*view_args)
+
 def viterbi_decode(
     tag_sequence: torch.Tensor,
     transition_matrix: torch.Tensor,
