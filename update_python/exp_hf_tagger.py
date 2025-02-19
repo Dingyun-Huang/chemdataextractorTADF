@@ -11,6 +11,7 @@ from typing import Dict, Optional, List, Tuple
 from chemdataextractor.doc import Sentence
 from chemdataextractor.data import find_data
 from chemdataextractor.nlp.util import combine_initial_dims, uncombine_initial_dims, get_device_of, get_range_vector
+from chemdataextractor.nlp.tag import BaseTagger
 
 class BertCrfConfig(PretrainedConfig):
     model_type = 'bert'
@@ -38,7 +39,12 @@ class BertCrfConfig(PretrainedConfig):
         super().__init__(**kwargs)
 
 
-class BertCrfTagger(PreTrainedModel):
+class BertCrfTagger(BaseTagger):
+    def __init__():
+        super().__init__()
+
+
+class BertCrfModel(PreTrainedModel):
     config_class = BertCrfConfig  # Required for saving/loading
     
     def __init__(self, config):
@@ -136,7 +142,7 @@ class BertCrfTagger(PreTrainedModel):
 
 def main():
     # Load the model
-    tagger = BertCrfTagger.from_pretrained(find_data("models/hf_bert_crf_tagger"))
+    model = BertCrfModel.from_pretrained(find_data("models/hf_bert_crf_tagger"))
     wordpiece_tokenizer = AutoTokenizer.from_pretrained(find_data("models/hf_bert_crf_tagger"))
     s = "The chemical formula of water is H2O."
     cde_s = Sentence(s)
@@ -176,10 +182,10 @@ def main():
     print("my indexer output:\n", wordpiece_ids)
     print("my offsets:\n", offsets)
     print("my mask:\n", mask)
-    tagger.eval()
+    model.eval()
     with torch.no_grad():
-        output = tagger(torch.LongTensor([wordpiece_ids]), torch.LongTensor([offsets]), torch.LongTensor([mask]))
-        hf_tagger_results = tagger.decode(output)
+        output = model(torch.LongTensor([wordpiece_ids]), torch.LongTensor([offsets]), torch.LongTensor([mask]))
+        hf_tagger_results = model.decode(output)
     
     # print(cde_tagged_tokens)
     print(list(zip(tokens, hf_tagger_results["tags"][0])))
