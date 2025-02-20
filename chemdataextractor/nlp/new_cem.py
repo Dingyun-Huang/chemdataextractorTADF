@@ -16,6 +16,7 @@ from ..data import find_data
 from .finetuned_bert_crf_wrapper import _BertCrfTagger
 from .tag import EnsembleTagger, NER_TAG_TYPE
 from .allennlpwrapper import _AllenNlpTokenTagger, ProcessedTextTagger, AllenNlpWrapperTagger
+from .hf_replaced_tagger import BertCrfTagger
 
 from allennlp.data.token_indexers import PretrainedBertIndexer
 
@@ -48,4 +49,6 @@ class CemTagger(EnsembleTagger):
     that uses a tagger based on BERT with a Conditional Random Field to constrain the outputs.
     More details in the paper (https://pubs.acs.org/doi/full/10.1021/acs.jcim.1c01199).
     """
-    taggers = [tokentagger, processtagger, BertFinetunedCRFCemTagger()]
+    taggers = [tokentagger, processtagger, BertCrfTagger()
+               #BertFinetunedCRFCemTagger()
+               ]

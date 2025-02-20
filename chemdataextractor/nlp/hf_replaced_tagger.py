@@ -29,14 +29,13 @@ from transformers import (AutoConfig, AutoModel, AutoTokenizer, DefaultDataColla
                           PretrainedConfig, PreTrainedModel)
 from yaspin import yaspin
 
-from chemdataextractor.data import find_data
-from chemdataextractor.doc import Sentence, Document
-from chemdataextractor.errors import ConfigurationError
-from chemdataextractor.nlp.allennlp_modules import TimeDistributed
-from chemdataextractor.nlp.crf import (ConditionalRandomField,
+from ..data import find_data
+from ..errors import ConfigurationError
+from .allennlp_modules import TimeDistributed
+from .crf import (ConditionalRandomField,
                                        allowed_transitions)
-from chemdataextractor.nlp.tag import BaseTagger, NER_TAG_TYPE
-from chemdataextractor.nlp.util import (combine_initial_dims, get_device_of,
+from .tag import BaseTagger, NER_TAG_TYPE
+from .util import (combine_initial_dims, get_device_of,
                                         get_range_vector,
                                         uncombine_initial_dims)
 
@@ -124,17 +123,7 @@ class BertCrfTagger(BaseTagger):
             find_data(self.model))
 
     def process(self, tag):
-        """
-        Process the given tag. This can be used for example if the names of tags in training are different
-        from what ChemDataExtractor expects.
-
-
-        :param tag str: The raw string output from the predictor.
-
-        :returns: A processed version of the tag
-        :rtype: str
-        """
-        return tag
+        return tag.replace("CEM", "CM")
     
     def get_predictor_inputs(self, tokens):
         """
@@ -444,7 +433,7 @@ class BertCrfModel(PreTrainedModel):
 
         # TODO: Sperate the function into two parts: one for the BERT embeddings and the other for the CRF
         sequence_output = self.dropout(output_embeddings)
-        print(sequence_output.size())
+        # print(sequence_output.size())
         # Project onto tag space
         logits = self.tag_projection_layer(sequence_output)
         best_paths = self.crf.viterbi_tags(logits, crf_mask)
@@ -507,34 +496,4 @@ class BertCrfModel(PreTrainedModel):
         return output_dict
 
 
-def main():
-    # Load the model
-    # model = BertCrfModel.from_pretrained(
-    #     find_data("models/hf_bert_crf_tagger"))
-    # wordpiece_tokenizer = AutoTokenizer.from_pretrained(
-    #     find_data("models/hf_bert_crf_tagger"))
-    s1 = "The chemical formula of water is H2O."
-    cde_s1 = Sentence(s1)
-    s2 = "The crude product was recrystallized from ethanol to yield 5-hydroxy-2-methyl-1,4-dihydroanthracene-9,10-dione as golden-brown needles (0.9980 g, 75% yield)."
-    cde_s2 = Sentence(s2)
-    cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
-    cde_tagged_tokens = cde_doc.paragraphs[10].ner_tagged_tokens
-    print("CDE tagged tokens", cde_tagged_tokens)
 
-    # # Using the BertCrfTagger
-    # hf_tagger = BertCrfTagger()
-    # hf_tagger_results = hf_tagger.batch_tag([tokens])
-
-    # print("cde tagged tokens", cde_tagged_tokens)
-    # print(list(zip(tokens, hf_tagger_results[0])))
-    
-    # Use the tagger in CDE
-    hf_tagger = BertCrfTagger()
-    cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
-    cde_doc.taggers = [hf_tagger]
-    cde_hf_tagged_tokens = cde_doc.paragraphs[10].ner_tagged_tokens
-    print("HF tagged tokens", cde_hf_tagged_tokens)
-
-
-if __name__ == "__main__":
-    main()
