@@ -825,7 +825,6 @@ class Sentence(BaseText):
         Assign tags for each token, with some intelligence with regards to which method to use for tagging.
         See :class:`~chemdataextractor.nlp.tag.BaseTagger` and :ref:`this guide<creating_taggers>` for more information.
         """
-        print("CDE sentence tokens: ", self.tokens)
         for tagger in reversed(self.taggers):
             if tagger.can_tag(tag_type):
                 tags = None

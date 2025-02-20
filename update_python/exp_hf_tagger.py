@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 """_summary_
 This module contains the implementation of a BERT-CRF tagger for named entity recognition (NER) using the ChemDataExtractor library.
 It includes the configuration class `BertCrfConfig`, the tagger class `BertCrfTagger`, and the model class `BertCrfModel`.
@@ -19,8 +20,11 @@ import warnings
 import math
 from typing import Dict, List, Optional, Tuple
 
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import torch
 import torch.nn as nn
+import numpy as np
 from transformers import (AutoConfig, AutoModel, AutoTokenizer, DefaultDataCollator,
                           PretrainedConfig, PreTrainedModel)
 from yaspin import yaspin
@@ -36,7 +40,6 @@ from chemdataextractor.nlp.util import (combine_initial_dims, get_device_of,
                                         get_range_vector,
                                         uncombine_initial_dims)
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -141,7 +144,7 @@ class BertCrfTagger(BaseTagger):
                 # if self._do_lowercase and token.text not in self._never_lowercase
                 # else token.text
                 for token in tokens)
-        token_wordpiece_ids = [[self.wordpiece_tokenizer.convert_tokens_to_ids(wordpiece) for wordpiece in wordpiece_tokenizer.tokenize(token)]
+        token_wordpiece_ids = [[self.wordpiece_tokenizer.convert_tokens_to_ids(wordpiece) for wordpiece in self.wordpiece_tokenizer.tokenize(token)]
                             for token in text]
 
         offsets = []
@@ -190,7 +193,7 @@ class BertCrfTagger(BaseTagger):
                 model = BertCrfModel.from_pretrained(
                     find_data("models/hf_bert_crf_tagger"))
                 if gpu_id is not None and gpu_id >= 0:
-                    model = model.cuda(gpu_id)
+                    model = model.to(f"cuda: {gpu_id}")
                 model = model.eval()
                 self._predictor = copy.deepcopy(model)
                 sp.ok("✔")
@@ -230,13 +233,12 @@ class BertCrfTagger(BaseTagger):
             prediction_start_time = datetime.datetime.now()
             log.debug("".join(["Batch size:", str(len(instance))]))
             with torch.no_grad():
-                batch_predictions = self.predictor.forward(
-                    **instance)
+                batch_predictions = self.predictor.forward_on_instances(
+                    instance)
             predictions.extend(batch_predictions)
             prediction_end_time = datetime.datetime.now()
             log.debug(
                 "".join(["Batch time:", str(prediction_end_time - prediction_start_time)]))
-
         id_predictions_map = {}
         for allensentence, prediction in zip(all_allennlptokens, predictions):
             id_predictions_map[id(allensentence)] = prediction["tags"]
@@ -318,13 +320,13 @@ class BertCrfTagger(BaseTagger):
                 for sent in div_sents:
                     division_instances.append(
                         self.get_predictor_inputs(sent))
-                instances.append(division_instances)
+                instances.append(self.data_collator(division_instances))
 
         else:
             for allennlptokens in all_allennlptokens:
                 instances.append(self.get_predictor_inputs(allennlptokens))
             # just a single batch
-            instances = [instances]
+            instances = [self.data_collator(instances)]
         return instances
 
     def _assign_tags(self, sents, sentence_subsentence_map, id_predictions_map):
@@ -410,9 +412,9 @@ class BertCrfModel(PreTrainedModel):
     def _label_to_index(self):
         return {label: index for index, label in self.index_and_label}
 
-    def forward(self, input_ids, offsets, crf_mask, token_type_ids=None, labels=None):
+    def forward(self, input_ids, offsets, crf_mask, token_type_ids=None):
         # BERT embeddings
-        print(input_ids.size())
+        # print(input_ids.size())
 
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
@@ -452,6 +454,44 @@ class BertCrfModel(PreTrainedModel):
         output = {"logits": logits, "mask": crf_mask, "tags": predicted_tags}
 
         return output
+    
+    def forward_on_instances(self, instances: Dict[str, torch.Tensor]) -> List[Dict[str, np.ndarray]]:
+        """
+        Takes a list of  :class:`~allennlp.data.instance.Instance`s, converts that text into
+        arrays using this model's :class:`Vocabulary`, passes those arrays through
+        :func:`self.forward()` and :func:`self.decode()` (which by default does nothing)
+        and returns the result.  Before returning the result, we convert any
+        ``torch.Tensors`` into numpy arrays and separate the
+        batched output into a list of individual dicts per instance. Note that typically
+        this will be faster on a GPU (and conditionally, on a CPU) than repeated calls to
+        :func:`forward_on_instance`.
+
+        Parameters
+        ----------
+        instances : Dict[str, torch.Tensor], required
+            The instances to run the model on.
+
+        Returns
+        -------
+        A list of the models output for each instance.
+        """
+        batch_size = instances['input_ids'].size(0)
+        with torch.no_grad():
+            instances = {k: v.to(self.device) for k, v in instances.items()}
+            outputs = self.decode(self(**instances))
+
+            instance_separated_output: List[Dict[str, np.ndarray]] = [{} for _ in range(batch_size)]
+            for name, output in list(outputs.items()):
+                if isinstance(output, torch.Tensor):
+                    # NOTE(markn): This is a hack because 0-dim pytorch tensors are not iterable.
+                    # This occurs with batch size 1, because we still want to include the loss in that case.
+                    # if output.dim() == 0:
+                    #     output = output.unsqueeze(0)
+
+                    output = output.detach().cpu().numpy()
+                for instance_output, batch_element in zip(instance_separated_output, output):
+                    instance_output[name] = batch_element
+            return instance_separated_output
 
     def decode(self, output_dict: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """
@@ -469,58 +509,21 @@ class BertCrfModel(PreTrainedModel):
 
 def main():
     # Load the model
-    model = BertCrfModel.from_pretrained(
-        find_data("models/hf_bert_crf_tagger"))
-    wordpiece_tokenizer = AutoTokenizer.from_pretrained(
-        find_data("models/hf_bert_crf_tagger"))
+    # model = BertCrfModel.from_pretrained(
+    #     find_data("models/hf_bert_crf_tagger"))
+    # wordpiece_tokenizer = AutoTokenizer.from_pretrained(
+    #     find_data("models/hf_bert_crf_tagger"))
     s = "The chemical formula of water is H2O."
     cde_s = Sentence(s)
     tokens = cde_s.tokens
-    # cde_tagged_tokens = cde_s.ner_tagged_tokens
+    cde_tagged_tokens = cde_s.ner_tagged_tokens
 
-    text = (token.text
-            # if self._do_lowercase and token.text not in self._never_lowercase
-            # else token.text
-            for token in tokens)
-    token_wordpiece_ids = [[wordpiece_tokenizer.convert_tokens_to_ids(wordpiece) for wordpiece in wordpiece_tokenizer.tokenize(token)]
-                           for token in text]
+    # Using the BertCrfTagger
+    hf_tagger = BertCrfTagger()
+    hf_tagger_results = hf_tagger.batch_tag([tokens])
 
-    offsets = []
-
-    # If we're using initial offsets, we want to start at offset = len(text_tokens)
-    # so that the first offset is the index of the first wordpiece of tokens[0].
-    # Otherwise, we want to start at len(text_tokens) - 1, so that the "previous"
-    # offset is the last wordpiece of "tokens[-1]".
-    offset = 1  # len(self._start_piece_ids) - 1
-
-    # Count amount of wordpieces accumulated
-    pieces_accumulated = 0
-    for token in token_wordpiece_ids:
-
-        # For initial offsets, the current value of ``offset`` is the start of
-        # the current wordpiece, so add it to ``offsets`` and then increment it.
-        offsets.append(offset)
-        offset += len(token)
-
-        pieces_accumulated += len(token)
-
-    flat_token_wordpiece_ids = [
-        wordpiece_id for token in token_wordpiece_ids for wordpiece_id in token]
-    wordpiece_ids = [wordpiece_tokenizer.cls_token_id] + \
-        flat_token_wordpiece_ids + [wordpiece_tokenizer.sep_token_id]
-    mask = [1 for _ in offsets]
-
-    print("my indexer output:\n", wordpiece_ids)
-    print("my offsets:\n", offsets)
-    print("my mask:\n", mask)
-    model.eval()
-    with torch.no_grad():
-        output = model(torch.LongTensor([wordpiece_ids]), torch.LongTensor(
-            [offsets]), torch.LongTensor([mask]))
-        hf_tagger_results = model.decode(output)
-
-    # print(cde_tagged_tokens)
-    print(list(zip(tokens, hf_tagger_results["tags"][0])))
+    print("cde tagged tokens", cde_tagged_tokens)
+    print(list(zip(tokens, hf_tagger_results[0])))
 
 
 if __name__ == "__main__":
