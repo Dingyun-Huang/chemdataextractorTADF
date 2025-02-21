@@ -25,7 +25,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import torch
 import torch.nn as nn
 import numpy as np
-from transformers import (AutoConfig, AutoModel, AutoTokenizer, DefaultDataCollator,
+from transformers import (AutoConfig, AutoModel, AutoTokenizer, DataCollatorWithPadding, DataCollatorForTokenClassification, DefaultDataCollator,
                           PretrainedConfig, PreTrainedModel)
 from yaspin import yaspin
 
@@ -74,8 +74,6 @@ class BertCrfTagger(BaseTagger):
 
     model = "models/hf_bert_crf_tagger"
     tag_type = NER_TAG_TYPE
-    data_collator = DefaultDataCollator()
-
     def __init__(self,
                  gpu_id=None,
                  archive_location=None,
@@ -120,7 +118,24 @@ class BertCrfTagger(BaseTagger):
             self.max_allowed_length = 220
         
         self.wordpiece_tokenizer = AutoTokenizer.from_pretrained(
-            find_data(self.model))
+            find_data(self.model), do_lower_case=False)
+        self.data_collator = DataCollatorWithPadding(self.wordpiece_tokenizer, padding="longest")
+
+    def collate_batch(self, instances):
+        """
+        Collate a batch of samples into a dictionary of tensors.
+        """
+        input_ids = [d['input_ids'] for d in instances]
+        offsets = [d['offsets'] for d in instances]
+        crf_mask = [d['crf_mask'] for d in instances]
+        batched_input_ids = nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_value=0)
+        batched_offsets = nn.utils.rnn.pad_sequence(offsets, batch_first=True, padding_value=0)
+        batched_crf_mask = nn.utils.rnn.pad_sequence(crf_mask, batch_first=True, padding_value=0)
+        return {
+            "input_ids": batched_input_ids,
+            "offsets": batched_offsets,
+            "crf_mask": batched_crf_mask
+        }
 
     def process(self, tag):
         return tag.replace("CEM", "CM")
@@ -309,13 +324,13 @@ class BertCrfTagger(BaseTagger):
                 for sent in div_sents:
                     division_instances.append(
                         self.get_predictor_inputs(sent))
-                instances.append(self.data_collator(division_instances))
+                instances.append(self.collate_batch(division_instances))
 
         else:
             for allennlptokens in all_allennlptokens:
                 instances.append(self.get_predictor_inputs(allennlptokens))
             # just a single batch
-            instances = [self.data_collator(instances)]
+            instances = [self.collate_batch(instances)]
         return instances
 
     def _assign_tags(self, sents, sentence_subsentence_map, id_predictions_map):

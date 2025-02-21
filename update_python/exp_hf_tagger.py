@@ -517,8 +517,9 @@ def main():
     cde_s1 = Sentence(s1)
     s2 = "The crude product was recrystallized from ethanol to yield 5-hydroxy-2-methyl-1,4-dihydroanthracene-9,10-dione as golden-brown needles (0.9980 g, 75% yield)."
     cde_s2 = Sentence(s2)
-    cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
-    cde_tagged_tokens = cde_doc.paragraphs[10].ner_tagged_tokens
+    cde_doc = Document(cde_s1, cde_s2)
+    # cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
+    cde_tagged_tokens = cde_doc.sentences[0].ner_tagged_tokens
     print("CDE tagged tokens", cde_tagged_tokens)
 
     # # Using the BertCrfTagger
@@ -530,9 +531,10 @@ def main():
     
     # Use the tagger in CDE
     hf_tagger = BertCrfTagger()
-    cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
+    cde_doc = Document(cde_s1, cde_s2)
+    # cde_doc = Document.from_file('/home/dh582/Desktop/chemdataextractor-development/update_python/10.1039_d2py00255h.html')
     cde_doc.taggers = [hf_tagger]
-    cde_hf_tagged_tokens = cde_doc.paragraphs[10].ner_tagged_tokens
+    cde_hf_tagged_tokens = cde_doc.sentences[0].ner_tagged_tokens
     print("HF tagged tokens", cde_hf_tagged_tokens)
 
 
