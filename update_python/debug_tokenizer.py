@@ -1,18 +1,3 @@
-# pylint: disable=line-too-long
-"""_summary_
-This module contains the implementation of a BERT-CRF tagger for named entity recognition (NER) using the ChemDataExtractor library.
-It includes the configuration class `BertCrfConfig`, the tagger class `BertCrfTagger`, and the model class `BertCrfModel`.
-The tagger class is responsible for processing and tagging sentences, while the model class defines the BERT-CRF architecture.
-Classes:
-    BertCrfConfig: Configuration class for the BERT-CRF model.
-    BertCrfTagger: Tagger class for named entity recognition using BERT-CRF.
-    BertCrfModel: Model class defining the BERT-CRF architecture.
-Functions:
-    main: Main function to load the model, tokenize a sample sentence, and perform NER tagging.
-Usage:
-    To use this module, instantiate the `BertCrfTagger` class and call its `tag` or `batch_tag` methods with the input sentences.
-    The `main` function provides an example of how to load the model and perform NER tagging on a sample sentence.
-"""
 import copy
 import datetime
 import logging
@@ -54,12 +39,11 @@ def main():
     #     find_data("models/hf_bert_crf_tagger"))
     # wordpiece_tokenizer = AutoTokenizer.from_pretrained(
     #     find_data("models/hf_bert_crf_tagger"))
-    s1 = '2-(4-Chloro-2-fluoro-3-difluoromethylphenyl)-[1,3,2]-dioxaborinane 1H NMR (CDCl3):'
+    s = '2-(4-Chloro-2-fluoro-3-difluoromethylphenyl)-[1,3,2]-dioxaborinane 1H NMR (CDCl3):'
     
-    hf_cde_s1 = Sentence(s1)
-    hf_cde_tagged_tokens = hf_cde_s1.ner_tagged_tokens
-    print("HF tagged tokens", hf_cde_tagged_tokens)
+    test_s = Sentence(s)
+    hf_cde_tagged_tokens = test_s.ner_tagged_tokens
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

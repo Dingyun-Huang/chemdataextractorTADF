@@ -25,7 +25,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import torch
 import torch.nn as nn
 import numpy as np
-from transformers import (AutoConfig, AutoModel, AutoTokenizer, DataCollatorWithPadding, DataCollatorForTokenClassification, DefaultDataCollator,
+from transformers import (AutoConfig, AutoModel, BertTokenizer, DataCollatorWithPadding, DataCollatorForTokenClassification, DefaultDataCollator,
                           PretrainedConfig, PreTrainedModel)
 from yaspin import yaspin
 
@@ -117,9 +117,8 @@ class BertCrfTagger(BaseTagger):
         if max_allowed_length is None:
             self.max_allowed_length = 220
         
-        self.wordpiece_tokenizer = AutoTokenizer.from_pretrained(
+        self.bert_tokenizer = BertTokenizer.from_pretrained(
             find_data(self.model), do_lower_case=False)
-        self.data_collator = DataCollatorWithPadding(self.wordpiece_tokenizer, padding="longest")
 
     def collate_batch(self, instances):
         """
@@ -144,13 +143,14 @@ class BertCrfTagger(BaseTagger):
         """
         Get the inputs for the predictor
         """
-        text = (token.text
+        text = (token.text  # TODO: change back to parentheses generator
                 # if self._do_lowercase and token.text not in self._never_lowercase
                 # else token.text
                 for token in tokens)
-        token_wordpiece_ids = [[self.wordpiece_tokenizer.convert_tokens_to_ids(wordpiece) for wordpiece in self.wordpiece_tokenizer.tokenize(token)]
+        # print("HF Text tokens:\n", text)
+        token_wordpiece_ids = [[self.bert_tokenizer.wordpiece_tokenizer.vocab[wordpiece] for wordpiece in self.bert_tokenizer.wordpiece_tokenizer.tokenize(token)]
                             for token in text]
-
+        _ = [print(self.bert_tokenizer.wordpiece_tokenizer.tokenize(token.text)) for token in tokens]
         offsets = []
 
         # If we're using initial offsets, we want to start at offset = len(text_tokens)
@@ -172,8 +172,8 @@ class BertCrfTagger(BaseTagger):
 
         flat_token_wordpiece_ids = [
             wordpiece_id for token in token_wordpiece_ids for wordpiece_id in token]
-        wordpiece_ids = [self.wordpiece_tokenizer.cls_token_id] + \
-            flat_token_wordpiece_ids + [self.wordpiece_tokenizer.sep_token_id]
+        wordpiece_ids = [self.bert_tokenizer.cls_token_id] + \
+            flat_token_wordpiece_ids + [self.bert_tokenizer.sep_token_id]
         mask = [1 for _ in offsets]
         
         return {
@@ -227,7 +227,8 @@ class BertCrfTagger(BaseTagger):
         # Create batches
         all_allennlptokens = sorted(all_allennlptokens, key=len)
         instances = self._create_batches(all_allennlptokens)
-
+        print("HF word tokens:\n", all_allennlptokens)
+        
         instance_time = datetime.datetime.now()
         log.debug(
             "".join(["Created instances:", str(instance_time - start_time)]))
@@ -384,7 +385,7 @@ class BertCrfModel(PreTrainedModel):
             AutoConfig.from_pretrained(config.model_name_or_path))
         self.num_tags = config.num_tags
         self.tag_projection_layer = TimeDistributed(
-            nn.Linear(self.bert_model.config.hidden_size, self.num_tags)
+            nn.Linear(self.bert_model.config.hidden_size, self.num_tags, bias=True)
         )
 
         self.label_encoding = config.label_encoding
@@ -427,13 +428,15 @@ class BertCrfModel(PreTrainedModel):
 
         # input_ids may have extra dimensions, so we reshape down to 2-d
         # before calling the BERT model and then reshape back at the end.
+        # print("my indexing input_ids:\n", input_ids)
         outputs = self.bert_model(input_ids=combine_initial_dims(input_ids),
                                   token_type_ids=combine_initial_dims(
                                       token_type_ids),
                                   attention_mask=combine_initial_dims(input_mask))
         # all_encoder_layers = torch.stack(outputs.last_hidden_state)
         last_hidden_state = outputs.last_hidden_state
-
+        # print(f"HF output_embeddings shape {last_hidden_state.shape}\n", last_hidden_state)
+        last_hidden_state = self.dropout(last_hidden_state)
         # At this point, mix is (batch_size * d1 * ... * dn, sequence_length, embedding_dim)
         # offsets is (batch_size, d1, ..., dn, orig_sequence_length)
         offsets2d = combine_initial_dims(offsets)
@@ -447,10 +450,9 @@ class BertCrfModel(PreTrainedModel):
             selected_embeddings, offsets.size())
 
         # TODO: Sperate the function into two parts: one for the BERT embeddings and the other for the CRF
-        sequence_output = self.dropout(output_embeddings)
         # print(sequence_output.size())
         # Project onto tag space
-        logits = self.tag_projection_layer(sequence_output)
+        logits = self.tag_projection_layer(output_embeddings)
         best_paths = self.crf.viterbi_tags(logits, crf_mask)
 
         predicted_tags = [x for x, y in best_paths]

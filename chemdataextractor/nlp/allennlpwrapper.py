@@ -182,6 +182,7 @@ class AllenNlpWrapperTagger(BaseTagger):
         # Create batches
         all_allennlptokens = sorted(all_allennlptokens, key=len)
         instances = self._create_batches(all_allennlptokens)
+        print("AllenNLP word tokens:\n", all_allennlptokens)
 
         instance_time = datetime.datetime.now()
         log.debug("".join(["Created instances:", str(instance_time - start_time)]))

@@ -165,10 +165,12 @@ class _BertCrfTagger(Model):
             A scalar loss to be optimised. Only computed if gold label ``tags`` are provided.
         """
         
+        # print("AllenNLP tokens:\n", tokens)
         embedded_text_input = self.text_field_embedder(tokens)
         mask = util.get_text_field_mask(tokens)
 
         embedded_text_input = self.dropout(embedded_text_input)
+        # print("AllenNLP Embedded text input:", embedded_text_input)
 
         logits = self.tag_projection_layer(embedded_text_input)
         best_paths = self.crf.viterbi_tags(logits, mask)
