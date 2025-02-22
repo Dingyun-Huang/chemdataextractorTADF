@@ -18,6 +18,7 @@ import datetime
 import logging
 import warnings
 import math
+import re
 from typing import Dict, List, Optional, Tuple
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -32,6 +33,7 @@ from yaspin import yaspin
 from ..data import find_data
 from ..errors import ConfigurationError
 from .allennlp_modules import TimeDistributed
+from .allennlp_modules import Token as AllenNLPToken
 from .crf import (ConditionalRandomField,
                                        allowed_transitions)
 from .tag import BaseTagger, NER_TAG_TYPE
@@ -42,6 +44,41 @@ from .util import (combine_initial_dims, get_device_of,
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
+
+
+class ProcessedTextTagger(BaseTagger):
+    """
+    Class to process text before the text is fed into any other taggers.
+    This class is designed to be used with AllenNlpWrapperTagger and replaces any
+    single-number tokens with <nUm> in accordance with the training data.
+    """
+    tag_type = "processed_text"
+    number_pattern = re.compile('([\+\-–−]?\d+(([\.・,\d])+)?)')
+    number_string = "<nUm>"
+
+    def tag(self, tokens):
+        tags = []
+        for token in tokens:
+            processed_text = token.text
+            if re.fullmatch(self.number_pattern, processed_text):
+                processed_text = self.number_string
+            tags.append((token, processed_text))
+        return tags
+
+
+class _AllenNlpTokenTagger(BaseTagger):
+    """
+    Class to get the AllenNLP token corresponding to a CDE token.
+    Intended for internal use with AllenNlpWrapperTagger.
+    """
+    tag_type = "_allennlptoken"
+
+    def tag(self, tokens):
+        tags = []
+        for token in tokens:
+            allennlptoken = AllenNLPToken(text=token.processed_text)
+            tags.append((token, allennlptoken))
+        return tags
 
 
 class BertCrfConfig(PretrainedConfig):

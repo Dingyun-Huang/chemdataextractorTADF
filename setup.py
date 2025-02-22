@@ -52,7 +52,7 @@ setup(
         # 'scipy',
         'yaspin',
         'deprecation',
-        'allennlp==0.9.0',
+        # 'allennlp==0.9.0',
         'tokenizers==0.12.1',
         'scikit-learn==0.22.1',
         'overrides==3.1.0',
