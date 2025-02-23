@@ -1,5 +1,4 @@
 -r production.txt
-unittest2
 pytest
 twine
 wheel

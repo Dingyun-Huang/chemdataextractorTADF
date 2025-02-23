@@ -9,7 +9,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
-import six
+
 
 from .base import BaseModel, StringType, ListType, ModelType, SetType
 from .units.temperature import TemperatureModel

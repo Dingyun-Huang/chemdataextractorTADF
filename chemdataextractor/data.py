@@ -14,15 +14,15 @@ import os
 
 import appdirs
 import requests
-import six
 import zipfile
 import tarfile
 import os
+import pickle  # Added import for pickle
 from yaspin import yaspin
 
 from .config import config
 from .errors import ModelNotFoundError
-from .utils import python_2_unicode_compatible, ensure_dir
+from .utils import ensure_dir
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ SERVER_ROOT = 'http://data.chemdataextractor.org/'
 AUTO_DOWNLOAD = True
 
 
-@python_2_unicode_compatible
+
 class Package(object):
     """Data package."""
 
@@ -166,7 +166,7 @@ def load_model(path):
     log.debug('Loading model %s' % path)
     try:
         with io.open(abspath, 'rb') as f:
-            model = six.moves.cPickle.load(f)
+            model = pickle.load(f)
     except IOError:
         raise ModelNotFoundError('Could not load %s. Have you run `cde data download`?' % path)
     _model_cache[abspath] = model
