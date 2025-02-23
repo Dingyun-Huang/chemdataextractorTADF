@@ -194,6 +194,7 @@ PACKAGES = [
     Package('models/pos_crf_wsj-1.0.pickle'),
     Package('models/punkt_chem-1.0.pickle'),
     Package('models/bert_finetuned_crf_model-1.0a', remote_path='https://cdemodels.blob.core.windows.net/cdemodels/bert_pretrained_crf_model-1.0a.tar.gz', untar=True),
+    Package('models/hf_bert_crf_tagger', remote_path='https://cdemodels.blob.core.windows.net/cdemodels/hf_bert_crf_tagger.tar.gz', untar=True),
     Package('models/scibert_cased_vocab-1.0.txt', remote_path='https://cdemodels.blob.core.windows.net/cdemodels/scibert_cased_vocab_1.0.txt'),
     Package('models/scibert_uncased_vocab-1.0.txt', remote_path='https://cdemodels.blob.core.windows.net/cdemodels/scibert_uncased_vocab-1.0.txt'),
     Package('models/scibert_cased_weights-1.0.tar.gz', remote_path='https://cdemodels.blob.core.windows.net/cdemodels/scibert_cased_weights-1.0.tar.gz'),
