@@ -951,6 +951,7 @@ class BertWordTokenizer(ChemWordTokenizer):
         super().__init__(split_last_stop)
         if path is None:
             path = find_data('models/scibert_uncased_vocab-1.0.txt')
+        # TODO: It's maybe worth replacing with the transformers library tokenizers.
         self.tokenizer = BertWordPieceTokenizer(path, lowercase=lowercase)
 
     def span_tokenize(self, s, additional_regex=None):

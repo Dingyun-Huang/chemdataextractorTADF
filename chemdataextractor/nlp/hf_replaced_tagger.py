@@ -234,7 +234,7 @@ class BertCrfTagger(BaseTagger):
                 model = BertCrfModel.from_pretrained(
                     find_data("models/hf_bert_crf_tagger"))
                 if gpu_id is not None and gpu_id >= 0:
-                    model = model.to(f"cuda: {gpu_id}")
+                    model = model.to(f"cuda:{gpu_id}")
                 model = model.eval()
                 self._predictor = copy.deepcopy(model)
                 sp.ok("✔")
@@ -264,7 +264,6 @@ class BertCrfTagger(BaseTagger):
         # Create batches
         all_allennlptokens = sorted(all_allennlptokens, key=len)
         instances = self._create_batches(all_allennlptokens)
-        print("HF word tokens:\n", all_allennlptokens)
         
         instance_time = datetime.datetime.now()
         log.debug(
