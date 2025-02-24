@@ -4,7 +4,7 @@ from chemdataextractor.parse.common import lbrct, rbrct
 from chemdataextractor.parse import AutoTableParser, merge, join
 from chemdataextractor.parse.template import MultiQuantityModelTemplateParser, \
     QuantityModelTemplateParser
-from chemdataextractor.model import ModelType, StringType, FluorescenceLifetime
+from chemdataextractor.model import ModelType, StringType
 from chemdataextractor.model.units import TimeModel
 from .condition import Temperature, RoomTemperature
 from .wavelength import lamda_pl_specifier
@@ -203,7 +203,7 @@ class TauDTableParser(AutoTableParser):
             yield model_instance
 
 
-class DelayedLifetime(TimeModel, FluorescenceLifetime):
+class DelayedLifetime(TimeModel):
     """
     Model for delayed lifetime
     """

@@ -76,7 +76,7 @@ class DimlessPLQYTableParser(AutoTableParser):
             yield model_instance
 
 
-class PhotoluminescenceQuantumYield(RatioModel, QuantumYield):
+class PhotoluminescenceQuantumYield(RatioModel):
     """
     Model for Photoluminescence Quantum Yields.
     """

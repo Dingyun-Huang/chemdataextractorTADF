@@ -307,6 +307,7 @@ class Document(BaseDocument):
                         if not is_label:
                             ThemeCompound.update_theme_compound(names)
 
+            prev_records = el_records
             el_records = el.records
             # Save the title compound
             if isinstance(el, Title):
@@ -480,8 +481,12 @@ class Document(BaseDocument):
                                 r_compound.merge(other_r_compound)
                                 other_r_compound.merge(r_compound)
                                 if isinstance(r, Compound) and isinstance(other_r, Compound):
-                                    records.pop(j)
-                                    records.pop(i)
+                                    j_record = records.pop(j)
+                                    i_record = records.pop(i)
+                                    if i_record == r_compound:
+                                        removed_records.append(j_record)
+                                    else:
+                                        removed_records.append(i_record)
                                     records.insert(i, other_r_compound)
                                     len_l -= 1
                                     i -= 1
