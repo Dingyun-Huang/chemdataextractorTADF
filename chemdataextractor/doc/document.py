@@ -497,46 +497,46 @@ class Document(BaseDocument):
         # TODO: Skip this during TADF extraction
         # Be smarter about merging: Merge with closest records instead
         # of earlier records always having precedence
-        i = 0
-        length = len(records_by_el)
+        # i = 0
+        # length = len(records_by_el)
 
-        # Iterate through the elements. We use records_by_el instead of just
-        # doing element.records because element.records is not cached, and
-        # extracting more than once for any element would be wasteful.
-        while i < length:
-            if len(records_by_el[i]) == 0:
-                i += 1
-                continue
-            offset = 1
-            max_offset = max(length - i, i)
-            el = record_id_el_map[id(records_by_el[i][0])]
-            merge_candidates = []
-            # Collect merge candidates, starting with the records closest
-            # to the current element.
-            while offset <= max_offset:
-                backwards_index = i - offset
-                forwards_index = i + offset
-                if backwards_index >= 0 and len(records_by_el[backwards_index]) != 0:
-                    backwards_el = record_id_el_map[id(records_by_el[backwards_index][0])]
-                    distance = self._element_distance(el, backwards_el)
-                    # If we're going backwards, we should iterate over the corresponding record backwards
-                    # as those at the end will be closest to the current record
-                    merge_candidates.extend((distance, candidate) for candidate in reversed(records_by_el[backwards_index]))
-                if forwards_index < length and len(records_by_el[forwards_index]) != 0:
-                    forwards_el = record_id_el_map[id(records_by_el[forwards_index][0])]
-                    distance = self._element_distance(el, forwards_el)
-                    merge_candidates.extend((distance, candidate) for candidate in records_by_el[forwards_index])
-                offset += 1
+        # # Iterate through the elements. We use records_by_el instead of just
+        # # doing element.records because element.records is not cached, and
+        # # extracting more than once for any element would be wasteful.
+        # while i < length:
+        #     if len(records_by_el[i]) == 0:
+        #         i += 1
+        #         continue
+        #     offset = 1
+        #     max_offset = max(length - i, i)
+        #     el = record_id_el_map[id(records_by_el[i][0])]
+        #     merge_candidates = []
+        #     # Collect merge candidates, starting with the records closest
+        #     # to the current element.
+        #     while offset <= max_offset:
+        #         backwards_index = i - offset
+        #         forwards_index = i + offset
+        #         if backwards_index >= 0 and len(records_by_el[backwards_index]) != 0:
+        #             backwards_el = record_id_el_map[id(records_by_el[backwards_index][0])]
+        #             distance = self._element_distance(el, backwards_el)
+        #             # If we're going backwards, we should iterate over the corresponding record backwards
+        #             # as those at the end will be closest to the current record
+        #             merge_candidates.extend((distance, candidate) for candidate in reversed(records_by_el[backwards_index]))
+        #         if forwards_index < length and len(records_by_el[forwards_index]) != 0:
+        #             forwards_el = record_id_el_map[id(records_by_el[forwards_index][0])]
+        #             distance = self._element_distance(el, forwards_el)
+        #             merge_candidates.extend((distance, candidate) for candidate in records_by_el[forwards_index])
+        #         offset += 1
 
-            # For each record in this current element, try merging with all of the merge candidates. The merge
-            # candidates are already in a sensible order as we ordered them by their distance from the current element.
-            for record in records_by_el[i]:
-                for distance, candidate in merge_candidates:
-                    candidate_el = record_id_el_map[id(candidate)]
-                    record.merge_contextual(candidate, distance=distance)
-                    record_id_el_map[id(record)] = el
-                    record_id_el_map[id(candidate)] = candidate_el
-            i += 1
+        #     # For each record in this current element, try merging with all of the merge candidates. The merge
+        #     # candidates are already in a sensible order as we ordered them by their distance from the current element.
+        #     for record in records_by_el[i]:
+        #         for distance, candidate in merge_candidates:
+        #             candidate_el = record_id_el_map[id(candidate)]
+        #             record.merge_contextual(candidate, distance=distance)
+        #             record_id_el_map[id(record)] = el
+        #             record_id_el_map[id(candidate)] = candidate_el
+        #     i += 1
 
         # clean up records
         cleaned_records = ModelList()

@@ -187,7 +187,7 @@ class BertCrfTagger(BaseTagger):
         # print("HF Text tokens:\n", text)
         token_wordpiece_ids = [[self.bert_tokenizer.wordpiece_tokenizer.vocab[wordpiece] for wordpiece in self.bert_tokenizer.wordpiece_tokenizer.tokenize(token)]
                             for token in text]
-        _ = [print(self.bert_tokenizer.wordpiece_tokenizer.tokenize(token.text)) for token in tokens]
+        # _ = [print(self.bert_tokenizer.wordpiece_tokenizer.tokenize(token.text)) for token in tokens]
         offsets = []
 
         # If we're using initial offsets, we want to start at offset = len(text_tokens)
