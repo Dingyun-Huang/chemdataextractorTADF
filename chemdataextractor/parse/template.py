@@ -65,7 +65,7 @@ class QuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + Optional(I('of') | I('was') | I('is') | I('at') | I('near') |
                              I('above') | I('below') | I('with') | I('to') | I('were') | I('a')).hide()
                   + Optional(I('reported') | I('determined') | I('calculated') | I('simulated') |
-                             I('estimated') | I('found') | I('occurs')).hide()
+                             I('estimated') | I('found') | I('occurs') | I('located')).hide()
                   + Optional(I('temperatures')).hide()
                   + Optional(I('as') | (I('to') + I('be'))).hide()
                   + Optional(I('in') + I('the') + I('range')).hide()
@@ -200,7 +200,7 @@ class MultiQuantityModelTemplateParser(BaseAutoParser, BaseSentenceParser):
                   + Optional(I('of') | I('was') | I('is') | I('at') | I('near') | I('are') |
                              I('above') | I('below') | I('with') | I('to') | I('were') | I('a')).hide()
                   + Optional(I('reported') | I('determined') | I('calculated') | I('simulated') |
-                             I('estimated') | I('found') | I('occurs')).hide()
+                             I('estimated') | I('found') | I('occurs') | I('located')).hide()
                   + Optional(I('temperatures')).hide()
                   + Optional(I('as') | (I('to') + I('be'))).hide()
                   + Optional(I('in') + I('the') + I('range')).hide()
