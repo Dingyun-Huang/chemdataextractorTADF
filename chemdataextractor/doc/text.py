@@ -986,8 +986,7 @@ class Subsentence(Sentence):
         skip_parsers = self.document.skip_parsers if self.document is not None else []
 
         ThemeCompound.local_cems = [chemical_mention.text for chemical_mention in self.parent_sentence.cems]
-        print(self.cems)
-        print(ThemeCompound.local_cems)
+
         for model in self._streamlined_models:
             for parser in model.parsers:
                 if parser in skip_parsers:
