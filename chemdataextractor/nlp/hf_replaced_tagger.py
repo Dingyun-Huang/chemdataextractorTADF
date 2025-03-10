@@ -145,10 +145,10 @@ class BertCrfTagger(BaseTagger):
         self._predictor = None
         self.min_batch_size = min_batch_size
         if min_batch_size is None:
-            self.min_batch_size = 50
+            self.min_batch_size = 100
         self.max_batch_size = max_batch_size
         if max_batch_size is None:
-            self.max_batch_size = 100
+            self.max_batch_size = 200
 
         self.max_allowed_length = max_allowed_length
         if max_allowed_length is None:

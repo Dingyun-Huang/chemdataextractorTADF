@@ -37,6 +37,7 @@ from ..parse.cem import chemical_name, cem_phrase, ThemeCompoundParser
 from ..parse.quantity import construct_quantity_re
 from ..model.model import Compound, NmrSpectrum, IrSpectrum, UvvisSpectrum, MeltingPoint, GlassTransition, ThemeCompound
 from ..model.contextual_range import SentenceRange
+from ..model.units import QuantityModel
 
 
 
@@ -480,6 +481,7 @@ class Paragraph(Text):
     def records(self):
         para_records = [r for sent in self.sentences for r in sent.records]
 
+
         i = 1
         length = len(para_records)
         while i < length:
@@ -493,6 +495,9 @@ class Paragraph(Text):
                     para_records[j + i].merge_contextual(para_records[j])
                 j += 1
             i += 1
+        
+        for r in para_records:
+            r.context = self.text
 
         return ModelList(*para_records)
 
@@ -988,6 +993,23 @@ class Subsentence(Sentence):
         ThemeCompound.local_cems = [chemical_mention.text for chemical_mention in self.parent_sentence.cems]
 
         for model in self._streamlined_models:
+            # quickly screen out quantity models that are not relevant by their specifiers
+            log.debug('Trying %s' % model)
+            if issubclass(model, QuantityModel):
+                # if there is no digit in the sentence, skip the quantity model
+                if not any(char.isdigit() for char in self.text):
+                    log.debug('Skipping %s as no digit found in the sentence' % model)
+                    continue
+                if not hasattr(model, 'specifier') or not model.specifier:
+                    log.warning('Quantity model %s does not have a specifier' % model)
+
+                count = 0
+                for r in model.specifier.parse_expression.scan(self.tokens):
+                    count += 1
+                    break
+                if count == 0:
+                    log.debug('Skipping %s as specifier not found' % model)
+                    continue
             for parser in model.parsers:
                 if parser in skip_parsers:
                     continue
