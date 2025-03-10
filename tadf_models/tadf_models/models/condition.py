@@ -56,6 +56,12 @@ class Phase(BaseModel):
     parsers = [AutoTableParser(), AutoSentenceParser()]
 
 
+class Solvent(BaseModel):
+    """Model for solvent"""
+    solvent = StringType(parse_expression=solvent_name_options, required=True)
+    parsers = [AutoTableParser(), AutoSentenceParser()]
+
+
 # Define specifier for temperature and room temperature phrases.
 temperature_specifier_expression = (I('temperature') | Every([R('^T\w?$'), Not(W("Tg")), Not(W("Td"))]) | I('at') | I('near') | I('around') | I('above'))
 room_temperature_expression = (R('^r\.?t\.?$',re.I) | ((I('room')|I('ambient')) + Optional(I('-')) + I('temperature'))).add_action(join)

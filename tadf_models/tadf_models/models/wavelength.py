@@ -7,6 +7,11 @@ from chemdataextractor.model import ModelType, StringType
 from chemdataextractor.model.units import LengthModel
 from .condition import Phase
 from chemdataextractor.model import ThemeCompound
+from .condition import Temperature, RoomTemperature, Solvent
+from chemdataextractor.model.contextual_range import (
+    SentenceRange,
+    ParagraphRange,
+)
 
 # Define specifiers for emission wavelengths.
 lamda = R("^[λ𝛌𝜆𝝀𝝺𝞴]$")
@@ -75,9 +80,10 @@ class PhotoluminescenceWavelength(LengthModel):
     """
     specifier = StringType(parse_expression=lamda_pl_specifier,
                            required=True)
-    compound = ModelType(ThemeCompound, contextual=True, required=True, binding=False)
-    solvent = None  # TODO: add solvent model
-    temperature = None # TODO: add temperature model
+    compound = ModelType(ThemeCompound, contextual=True, required=True, binding=False, contextual_range=2*SentenceRange())
+    solvent = ModelType(Solvent, required=False, contextual=True, contextual_range=2*SentenceRange())
+    temperature = ModelType(Temperature, required=False, contextual=True, contextual_range=2*SentenceRange())
+    room_temperature = ModelType(RoomTemperature, required=False, contextual=True, contextual_range=2*SentenceRange())
     parsers = [MultiQuantityModelTemplateParser(),
                QuantityModelTemplateParser(),
                AutoTableParser(),
