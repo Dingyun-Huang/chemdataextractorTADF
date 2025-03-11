@@ -106,7 +106,8 @@ suffix_pl = (pl + Optional(R("^[,;]$") + R("^[Mm]ax\w?$"))).add_action(merge) | 
 tadf_pl_word = I("photoluminescence") | W("PL") | I("fluorescence") | I("emission")
 
 lamda_pl_specifier = (
-    (lamda + suffix_pl).add_action(merge)
+    W("PL")
+    | (lamda + suffix_pl).add_action(merge)
     | (
         R("^[λ𝛌𝜆𝝀𝝺𝞴](([Pp][Ll])|([Ee][Mm])|([Ff][Ll](uo)?))\w?$")
         + Optional(R("^[,;]$") + R("^[Mm]ax\w?$"))
