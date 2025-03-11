@@ -32,8 +32,8 @@ def rsc_html_whitespace(document):
             continue
         if str(el.text).isspace():
             el.text = ''
-        if str(el.tail).isspace():
-            el.tail = ''
+        # if str(el.tail).isspace():
+        #     el.tail = ''
         if el.text:
             el.text = el.text.replace('\n', ' ')
     return document
@@ -80,7 +80,11 @@ class RscHtmlReader(HtmlReader):
         footnotes = []
         for fn in fns:
             footnote = self._parse_text(fn, refs=refs, specials=specials, element_cls=Footnote)[0]
-            footnote += Footnote('', id=fn.getprevious().get('id'))
+            footnote_prefix = Footnote(
+                "[" + fn.getprevious().xpath('string()') + "]" + fn.getprevious().tail,
+                id=fn.getprevious().get('id')
+            )
+            footnote = footnote_prefix + footnote
             footnotes.append(footnote)
         return footnotes
 

@@ -1000,16 +1000,18 @@ class Subsentence(Sentence):
                 if not any(char.isdigit() for char in self.text):
                     log.debug('Skipping %s as no digit found in the sentence' % model)
                     continue
-                if not hasattr(model, 'specifier') or not model.specifier:
+                if not hasattr(model, 'specifier') or model.specifier.parse_expression is None:
                     log.warning('Quantity model %s does not have a specifier' % model)
+                
+                else:
+                    count = 0
+                    for r in model.specifier.parse_expression.scan(self.tokens):
+                        count += 1
+                        break
+                    if count == 0:
+                        log.debug('Skipping %s as specifier not found' % model)
+                        continue
 
-                count = 0
-                for r in model.specifier.parse_expression.scan(self.tokens):
-                    count += 1
-                    break
-                if count == 0:
-                    log.debug('Skipping %s as specifier not found' % model)
-                    continue
             for parser in model.parsers:
                 if parser in skip_parsers:
                     continue
