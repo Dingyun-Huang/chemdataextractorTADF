@@ -127,6 +127,9 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
 
     def _parse_text(self, el, refs=None, specials=None, element_cls=Paragraph):
         """Like _parse_element but ensure a single element."""
+        # TODO: for RSC, I want to add a space between hyperlink labels and the text that follows,
+        # or even square brackets around the hyperlink labels.
+        # the whitespace was there, but it was removed by the clean function.
         if specials is None:
             specials = {}
         if refs is None:
@@ -210,14 +213,17 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
     def _parse_table(self, el, refs, specials):
         caption_css = self._css(self.table_caption_css, el)
         caption = self._parse_text(caption_css[0], refs=refs, specials=specials, element_cls=Caption)[0] if caption_css else Caption('')
+        # TODO: Append the table footnote to the caption, query = 'table tfoot tr'
+        footnotes = self._parse_table_footnotes(self._css(self.table_footnote_css, el), refs=refs, specials=specials)
         hrows= self._parse_table_rows(self._css(self.table_head_row_css, el), refs=refs, specials=specials)
-        rows = rows = self._parse_table_rows(self._css(self.table_body_row_css, el), refs=refs, specials=specials)
+        rows = self._parse_table_rows(self._css(self.table_body_row_css, el), refs=refs, specials=specials)
         data = []
         for hr in hrows:
             data.append([i.text.strip() for i in hr])
         for r in rows:
             data.append([i.text.strip() for i in r])
         table = Table(caption, table_data=data)
+        table.footnotes = footnotes
 
         return [table]
 
