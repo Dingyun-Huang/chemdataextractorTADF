@@ -36,7 +36,7 @@ class Table(CaptionedElement):
     Main Table object. Relies on TableDataExtractor.
     """
 
-    footnotes = []
+    footnotes = {}
     
     def __init__(self, caption, label=None, table_data=[], models=None, **kwargs):
         """
@@ -165,9 +165,7 @@ class Table(CaptionedElement):
         for table in self.cde_tables:
             table_records.extend(self._records_for_cde_tables(table, caption_records))
         for record in table_records:
-            record.context = self.caption.text
-            for footnote in self.footnotes:
-                record.context += footnote.text
+            record.context += self.caption.text
         return table_records
 
     def _records_for_cde_tables(self, cde_tables, caption_records=None):
