@@ -109,48 +109,60 @@ lamda_pl_specifier = (
     W("PL")
     | (lamda + suffix_pl).add_action(merge)
     | (
-        R("^[λ𝛌𝜆𝝀𝝺𝞴](([Pp][Ll])|([Ee][Mm])|([Ff][Ll](uo)?))\w?$")
-        + Optional(R("^[,;]$") + R("^[Mm]ax\w?$"))
+        R(r"^[λ𝛌𝜆𝝀𝝺𝞴](([Pp][Ll])|([Ee][Mm])|([Ff][Ll](uo)?))\w?$")
+        + Optional(R("^[,;]$") + R(r"^[Mm]ax\w?$"))
+    ).add_action(
+        merge
     )  # done
-    | (R("^([λ𝛌𝜆𝝀𝝺𝞴]|(PL))[Mm]ax\w?$") + R("^[,;]$") + pl)  # done
-    | R("^[λ𝛌𝜆𝝀𝝺𝞴](([Pp][Ll])|([Ee][Mm])|([Ff][Ll](uo)?))?([Mm]ax)?\w?$")  # done
+    | (R(r"^[λ𝛌𝜆𝝀𝝺𝞴][Mm]ax\w?$") + R("^[,;]$") + pl).add_action(merge)
+    | (R(r"^PL[Mm]ax\w?$"))
+    | R(r"^[λ𝛌𝜆𝝀𝝺𝞴](([Pp][Ll])|([Ee][Mm])|([Ff][Ll](uo)?))\w?$")
+    # | (R(r"^[λ𝛌𝜆𝝀𝝺𝞴][Mm]ax\w?$"))
     | (
         (I("emission") | I("emitting") | tadf_pl_word)  # done
-        + (I("wavelength") | R("^[pP]eaks?(ing)?$") | R("^[Mm]axim[(um)a]$"))
+        + (I("wavelength") | R(r"^[pP]eaks?(ing)?$") | R(r"^[Mm]axim[(um)a]$"))
+    ).add_action(
+        join
     )  # done
     | (
         tadf_pl_word  # done
-        + Optional(R("^spectr[(um)a]$") | R("^intensit[(ies)y]"))
+        + Optional(R(r"^spectr[(um)a]$") | R(r"^intensit[(ies)y]"))
         + SkipTo(
             (
-                R("^peaks?(ed)?$")
-                | R("^cent[(ers?)(res?)]d?$")
+                R(r"^peaks?(ed)?$")
+                | R(r"^cent[(ers?)(res?)]d?$")
                 | W("around")
                 | W("wavelength")
-                | (R("^[Mm]axim[(um)a]$") + Optional(I("wavelength")))
+                | (R(r"^[Mm]axim[(um)a]$") + Optional(I("wavelength")))
             )
         ).hide()
         + (
-            R("^peaks?(ed)?$")
-            | R("^cent[(ers?)(res?)]d?$")
+            R(r"^peaks?(ed)?$")
+            | R(r"^cent[(ers?)(res?)]d?$")
             | W("wavelength")
             | W("around")
-            | (R("^[Mm]axim[(um)a]$") + Optional(I("wavelength")))
+            | (R(r"^[Mm]axim[(um)a]$") + Optional(I("wavelength")))
         )
-    )
+    ).add_action(
+        join
+    )  # done
     | (
-        (I("peak") + R("^wavelengths?$") | R("^positions?$"))
+        (I("peak") + R(r"^wavelengths?$") | R(r"^positions?$"))
         + I("of")
         + (tadf_pl_word | I("emission"))
-        + R("^spectr[(um)a]$")
-    )
+        + R(r"^spectr[(um)a]$")
+    ).add_action(
+        join
+    )  # done
     | (
-        R("^emit(ted)?(ting)?s?$")
-        + SkipTo((I("peak") | I("maximum")) + R("^wavelengths?$")).hide()
+        R(r"^emit(ted)?(ting)?s?$")
+        + SkipTo((I("peak") | I("maximum")) + R(r"^wavelengths?$")).hide()
         + (I("peak") | I("maximum"))
-        + R("^wavelengths?$")
-    )
-).add_action(join)
+        + R(r"^wavelengths?$")
+    ).add_action(
+        join
+    )  # done
+)
 
 
 class PhotoluminescenceWavelength(LengthModel):
@@ -158,6 +170,7 @@ class PhotoluminescenceWavelength(LengthModel):
     Model for photoluminescence wavelengths.
     """
 
+    context = ""
     specifier = StringType(parse_expression=lamda_pl_specifier, required=True)
     compound = ModelType(
         ThemeCompound,
