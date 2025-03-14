@@ -225,7 +225,7 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
                 cell_text = cell.text
                 for fn_ref in cell.references:
                     if footnote_exp.search(fn_ref) is not None and fn_ref in footnotes.keys():
-                        cell_text += ' ' + footnotes[fn_ref]
+                        cell_text += '; ' + footnotes[fn_ref].strip(" \n")
                 hrows_data.append(cell_text)
             data.append(hrows_data)
         for r in rows:
