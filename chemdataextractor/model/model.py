@@ -154,6 +154,7 @@ class ThemeCompound(Compound):
     names = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     labels = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
     roles = SetType(StringType(), parse_expression=NoMatch(), updatable=False)
+    context=""
     blocked_doi = False
     local_cems = []
     name_blocklist = ["\U0001F643"]

@@ -15,6 +15,7 @@ from collections import defaultdict
 from lxml import etree
 from lxml.etree import XMLParser
 from lxml.html import HTMLParser
+import re
 
 
 from ..errors import ReaderError
@@ -215,13 +216,16 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
         hrows= self._parse_table_rows(self._css(self.table_head_row_css, el), refs=refs, specials=specials)
         rows = self._parse_table_rows(self._css(self.table_body_row_css, el), refs=refs, specials=specials)
         data = []
+        
+        footnote_exp = re.compile(r"^tab\d+fn", re.IGNORECASE)
         for hr in hrows:
             # hr: list of Cell objects
             hrows_data = []
             for cell in hr:
                 cell_text = cell.text
                 for fn_ref in cell.references:
-                    cell_text += ' ' + footnotes[fn_ref]
+                    if footnote_exp.search(fn_ref) is not None and fn_ref in footnotes.keys():
+                        cell_text += ' ' + footnotes[fn_ref]
                 hrows_data.append(cell_text)
             data.append(hrows_data)
         for r in rows:
@@ -229,7 +233,8 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
             for cell in r:
                 cell_text = cell.text
                 for fn_ref in cell.references:
-                    cell_text += ' ' + footnotes[fn_ref]
+                    if footnote_exp.search(fn_ref) is not None and fn_ref in footnotes.keys():
+                        cell_text += ' ' + footnotes[fn_ref]
                 rows_data.append(cell_text)
             data.append(rows_data)
         table = Table(caption, table_data=data)
