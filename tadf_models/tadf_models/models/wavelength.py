@@ -195,8 +195,8 @@ class PhotoluminescenceWavelength(LengthModel):
         contextual_range=1 * SentenceRange(),
     )
     parsers = [
-        MultiQuantityModelTemplateParser(),
-        QuantityModelTemplateParser(),
+        # MultiQuantityModelTemplateParser(),
+        # QuantityModelTemplateParser(),
         AutoTableParser(),
     ]
 

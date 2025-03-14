@@ -155,6 +155,7 @@ class Table(CaptionedElement):
                         # adding of the row/column header categories to the record for potential merging later
                         result.table_row_categories = ' '.join(cde_cell.row_categories)
                         result.table_col_categories = ' '.join(cde_cell.col_categories)
+                        result.context = cde_cell.text
                         yield result
                 ThemeCompound.local_cems = []
 
@@ -165,7 +166,8 @@ class Table(CaptionedElement):
         for table in self.cde_tables:
             table_records.extend(self._records_for_cde_tables(table, caption_records))
         for record in table_records:
-            record.context += self.caption.text
+            # TODO: also add the cell content to the context
+            record.context = record.context + "; " + self.caption.text
         return table_records
 
     def _records_for_cde_tables(self, cde_tables, caption_records=None):
