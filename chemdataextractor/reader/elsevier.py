@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 
 from ..scrape.clean import clean, Cleaner
 from ..doc.table import Cell, Table
-from ..doc.text import Caption
+from ..doc.text import Caption, Footnote
 from ..doc.meta import MetaData
 from .markup import XmlReader
 from lxml import etree
@@ -31,7 +31,7 @@ def remove_if_reference(el):
 
 # XML stripper that removes the tags around numbers in chemical formulas
 strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup | .//ce:inter-ref | .//ce:cross-ref ',
-                        kill_xpath='.//ce:cross-ref//ce:sup | .//ce:note-para | .//ce:cross-refs | .//ce:float-anchor',
+                        kill_xpath='.//ce:cross-ref//ce:sup | .//ce:cross-refs | .//ce:float-anchor',
                         process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs':
                                         remove_if_reference})
 
@@ -121,7 +121,7 @@ class ElsevierXmlReader(XmlReader):
     table_head_row_css = 'cals|thead cals|row'
     table_body_row_css = 'cals|tbody cals|row'
     table_cell_css = 'ce|entry'
-    table_footnote_css = 'table-wrap-foot p'
+    table_footnote_css = 'ce|table ce|table-footnote'
     figure_css = 'ce|figure'
     figure_caption_css = 'ce|figure ce|caption'
     figure_label_css = 'ce|figure ce|label'
@@ -245,3 +245,11 @@ class ElsevierXmlReader(XmlReader):
             if ref == figure_link_locator:
                 links.append(obj.text)
         return links
+
+    def _parse_table_footnotes(self, fns, refs, specials):
+        """Override to account for elsevier table footnotes."""
+        footnotes = []
+        for fn in fns:
+            footnote = self._parse_text(fn, refs=refs, specials=specials, element_cls=Footnote)[0]
+            footnotes.append(footnote)
+        return footnotes
