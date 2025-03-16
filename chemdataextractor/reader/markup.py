@@ -217,7 +217,7 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
         rows = self._parse_table_rows(self._css(self.table_body_row_css, el), refs=refs, specials=specials)
         data = []
         
-        footnote_exp = re.compile(r"^tab\d+fn", re.IGNORECASE)
+        footnote_exp = re.compile(r"(^tab\d+fn)|(^dtbl\d+fn)", re.IGNORECASE)
         for hr in hrows:
             # hr: list of Cell objects
             hrows_data = []

@@ -31,7 +31,7 @@ def remove_if_reference(el):
 
 # XML stripper that removes the tags around numbers in chemical formulas
 strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup | .//ce:inter-ref | .//ce:cross-ref ',
-                        kill_xpath='.//ce:cross-ref//ce:sup | .//ce:cross-refs | .//ce:float-anchor',
+                        kill_xpath='.//ce:cross-refs | .//ce:float-anchor',
                         process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs':
                                         remove_if_reference})
 
@@ -91,11 +91,18 @@ def els_xml_whitespace(document):
     # sys.exit()
     return document
 
+def els_xml_square_brackets(document):
+    """ Remove empty square brackets from xml tags"""
+    for el in document.xpath('//*'):
+        el.text = re.sub(r'\s*\[\s*\]', '', el.text) if el.text else ''
+        el.tail = re.sub(r'\s*\[\s*\]', '', el.tail) if el.tail else ''
+    return document
+
 
 class ElsevierXmlReader(XmlReader):
     """Reader for Elsevier XML documents."""
 
-    cleaners = [clean, fix_elsevier_xml_whitespace, els_xml_whitespace, strip_els_xml]
+    cleaners = [clean, fix_elsevier_xml_whitespace, els_xml_whitespace, strip_els_xml, els_xml_square_brackets]
 
     etree.FunctionNamespace("http://www.elsevier.com/xml/svapi/article/dtd").prefix = 'default'
     etree.FunctionNamespace("http://www.elsevier.com/xml/bk/dtd").prefix = 'bk'
@@ -250,6 +257,9 @@ class ElsevierXmlReader(XmlReader):
         """Override to account for elsevier table footnotes."""
         footnotes = []
         for fn in fns:
+            # TODO: footnote labels are in specials, which leads to missing labels,
+            # this is not a big problem as the labels are not mandatory for parsing,
+            # but it would be nice to have them for consistency.
             footnote = self._parse_text(fn, refs=refs, specials=specials, element_cls=Footnote)[0]
             footnotes.append(footnote)
         return footnotes
