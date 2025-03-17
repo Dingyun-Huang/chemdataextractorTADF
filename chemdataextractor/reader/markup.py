@@ -196,6 +196,8 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
             return [el.attrib['rid']]
         elif 'idref' in el.attrib:
             return [el.attrib['idref']]
+        elif 'refid' in el.attrib:
+            return [el.attrib['refid']]
         else:
             return [''.join(el.itertext()).strip()]
 
@@ -213,7 +215,7 @@ class LxmlReader(BaseReader, metaclass=ABCMeta):
         caption = self._parse_text(caption_css[0], refs=refs, specials=specials, element_cls=Caption)[0] if caption_css else Caption('')
         footnotes = self._parse_table_footnotes(self._css(self.table_footnote_css, el), refs=refs, specials=specials)
         footnotes = {fn.id: fn.text for fn in footnotes}
-        hrows= self._parse_table_rows(self._css(self.table_head_row_css, el), refs=refs, specials=specials)
+        hrows = self._parse_table_rows(self._css(self.table_head_row_css, el), refs=refs, specials=specials)
         rows = self._parse_table_rows(self._css(self.table_body_row_css, el), refs=refs, specials=specials)
         data = []
         
