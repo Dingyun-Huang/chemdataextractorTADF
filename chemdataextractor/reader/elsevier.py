@@ -16,15 +16,18 @@ from __future__ import unicode_literals
 
 from ..scrape.clean import clean, Cleaner
 from ..doc.table import Cell, Table
-from ..doc.text import Caption, Footnote
+from ..doc.text import Caption, Footnote, Paragraph
 from ..doc.meta import MetaData
 from .markup import XmlReader
 from lxml import etree
 import re
+import logging
+
+log = logging.getLogger(__name__)
 
 def remove_if_reference(el):
     text = el.text
-    check_regex = re.compile('\[\d')
+    check_regex = re.compile(r'\[\d')
     if check_regex.match(text) or text.isnumeric():
         return None
     return el
@@ -32,6 +35,7 @@ def remove_if_reference(el):
 # XML stripper that removes the tags around numbers in chemical formulas
 strip_els_xml = Cleaner(strip_xpath='.//ce:inf | .//ce:italic | .//ce:bold | .//ce:formula | .//mml:* | .//ce:sup | .//ce:table//ce:sup | .//ce:inter-ref | .//ce:cross-ref ',
                         kill_xpath='.//ce:cross-refs | .//ce:float-anchor',
+                        allow_xpath='.//ce:table//ce:cross-ref',
                         process_xpaths={'.//ce:cross-ref//ce:sup | .//ce:cross-ref | .//ce:cross-refs':
                                         remove_if_reference})
 
@@ -91,18 +95,25 @@ def els_xml_whitespace(document):
     # sys.exit()
     return document
 
-def els_xml_square_brackets(document):
-    """ Remove empty square brackets from xml tags"""
+
+def els_xml_customized_treatment(document):
+    """ Customized treatment for Elsevier XML files """
+    # remove the square brackets in the text and tail of all elements
     for el in document.xpath('//*'):
         el.text = re.sub(r'\s*\[\s*\]', '', el.text) if el.text else ''
         el.tail = re.sub(r'\s*\[\s*\]', '', el.tail) if el.tail else ''
+    
+    # replace non-breaking space with normal space
+    for el in document.xpath('//*'):
+        el.text = re.sub(r'\xa0', ' ', el.text) if el.text else ''
+        el.tail = re.sub(r'\xa0', ' ', el.tail) if el.tail else ''
     return document
 
 
 class ElsevierXmlReader(XmlReader):
     """Reader for Elsevier XML documents."""
 
-    cleaners = [clean, fix_elsevier_xml_whitespace, els_xml_whitespace, strip_els_xml, els_xml_square_brackets]
+    cleaners = [clean, fix_elsevier_xml_whitespace, els_xml_whitespace, strip_els_xml, els_xml_customized_treatment]
 
     etree.FunctionNamespace("http://www.elsevier.com/xml/svapi/article/dtd").prefix = 'default'
     etree.FunctionNamespace("http://www.elsevier.com/xml/bk/dtd").prefix = 'bk'
@@ -263,3 +274,26 @@ class ElsevierXmlReader(XmlReader):
             footnote = self._parse_text(fn, refs=refs, specials=specials, element_cls=Footnote)[0]
             footnotes.append(footnote)
         return footnotes
+    
+    def _parse_text(self, el, refs=None, specials=None, element_cls=Paragraph):
+        """Like _parse_element but ensure a single element."""
+        if specials is None:
+            specials = {}
+        if refs is None:
+            refs = {}
+        elements = self._parse_element_r(el, specials=specials, refs=refs, element_cls=element_cls)
+        # This occurs if the input element is self-closing... (some table td in NLM XML)
+        if not elements:
+            return [element_cls('')]
+        element = elements[0]
+        for next_element in elements[1:]:
+            # check if the element is in table
+            if bool(el.xpath('ancestor::ce:table')) and next_element.id and "crosref" in next_element.id:
+                # skip the cross ref labels in tables.
+                continue
+            
+            try:
+                element += element_cls(' ') + next_element
+            except TypeError as e:
+                log.warning('Adding of two objects was skipped. {} and {} cannot be added.'.format(str(type(element)), str(type(next_element))))
+        return [element]
