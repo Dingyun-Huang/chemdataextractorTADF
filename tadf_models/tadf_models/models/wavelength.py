@@ -177,22 +177,22 @@ class PhotoluminescenceWavelength(LengthModel):
         contextual=True,
         required=True,
         binding=False,
-        contextual_range=1 * SentenceRange(),
+        contextual_range=SentenceRange(),
     )
     solvent = ModelType(
-        Solvent, required=False, contextual=True, contextual_range=1 * SentenceRange()
+        Solvent, required=False, contextual=True, contextual_range=SentenceRange()
     )
     temperature = ModelType(
         Temperature,
         required=False,
         contextual=True,
-        contextual_range=1 * SentenceRange(),
+        contextual_range=SentenceRange(),
     )
     room_temperature = ModelType(
         RoomTemperature,
         required=False,
         contextual=True,
-        contextual_range=1 * SentenceRange(),
+        contextual_range=SentenceRange(),
     )
     parsers = [
         # MultiQuantityModelTemplateParser(),
