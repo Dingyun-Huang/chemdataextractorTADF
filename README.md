@@ -20,9 +20,9 @@ git clone https://github.com/Dingyun-Huang/chemdataextractorTADF.git
 cd chemdataextractorTADF
 ```
 
-Create and activate a new Python 3.7 environment.
+Create and activate a new Python 3.11 environment.
 ```
-conda create --name cde_tadf python=3.7
+conda create --name cde_tadf python=3.11
 conda activate cde_tadf
 ```
 
