@@ -3,6 +3,8 @@ ChemDataExtractor TADF
 
 __ChemDataExtractor TADF__ is an adaption of __ChemDataExtractor__ v2, which is a toolkit for extracting chemical information from the scientific literature. The adaption was made for text-mining the thermally-activated delayed fluorescence (TADF) domain.
 
+**NOTE:** If you come from [TADF Photoluminescence Prediction](https://github.com/Dingyun-Huang/tadf-photoluminescence-ml-prediction/), please **CHECKOUT `extract-pl`**.
+
 Prerequisites
 ------------
 
