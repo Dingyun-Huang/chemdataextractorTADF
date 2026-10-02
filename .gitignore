@@ -44,6 +44,7 @@ docs/_build/
 .ipynb_checkpoints/
 
 # PyCharm
+.cursor/
 .idea/
 .vscode/
 main.py
